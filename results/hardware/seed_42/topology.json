@@ -1,0 +1,108 @@
+{
+  "num_inputs": 5,
+  "num_outputs": 1,
+  "num_hidden": 2,
+  "num_active_connections": 6,
+  "nodes": [
+    {
+      "id": -1,
+      "type": "input",
+      "activation": null,
+      "bias": null,
+      "response": null
+    },
+    {
+      "id": -2,
+      "type": "input",
+      "activation": null,
+      "bias": null,
+      "response": null
+    },
+    {
+      "id": -3,
+      "type": "input",
+      "activation": null,
+      "bias": null,
+      "response": null
+    },
+    {
+      "id": -4,
+      "type": "input",
+      "activation": null,
+      "bias": null,
+      "response": null
+    },
+    {
+      "id": -5,
+      "type": "input",
+      "activation": null,
+      "bias": null,
+      "response": null
+    },
+    {
+      "id": 0,
+      "type": "output",
+      "activation": "tanh",
+      "bias": -3.997734,
+      "response": 1.0
+    },
+    {
+      "id": 688,
+      "type": "hidden",
+      "activation": "tanh",
+      "bias": 3.203142,
+      "response": 1.0
+    },
+    {
+      "id": 1171,
+      "type": "hidden",
+      "activation": "tanh",
+      "bias": -0.409619,
+      "response": 1.0
+    }
+  ],
+  "connections": [
+    {
+      "from": -1,
+      "to": 0,
+      "weight": -14.259011,
+      "enabled": true
+    },
+    {
+      "from": -4,
+      "to": 688,
+      "weight": 0.26852,
+      "enabled": true
+    },
+    {
+      "from": 688,
+      "to": 0,
+      "weight": 0.972468,
+      "enabled": true
+    },
+    {
+      "from": -1,
+      "to": 1171,
+      "weight": -0.658098,
+      "enabled": true
+    },
+    {
+      "from": -3,
+      "to": 688,
+      "weight": 0.49831,
+      "enabled": true
+    },
+    {
+      "from": -1,
+      "to": 688,
+      "weight": 0.462448,
+      "enabled": false
+    },
+    {
+      "from": -2,
+      "to": 688,
+      "weight": -0.288114,
+      "enabled": true
+    }
+  ]
+}

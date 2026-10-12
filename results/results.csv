@@ -1,0 +1,3 @@
+seed,mode,best_reward,mean_reward,hidden_neurons,active_connections,estimated_operations,success_flag
+42,performance,-21.2267,-158.1052,2,4,7,False
+42,hardware,-24.1133,-136.021,2,6,9,False

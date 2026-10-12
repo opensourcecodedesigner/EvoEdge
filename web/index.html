@@ -1,0 +1,2399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEAT // CartPole Swing-Up — Autonomous Controller Visualizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    /* ── Architectural Blueprint Theme Design Tokens ── */
+    :root {
+      /* Paper & Blueprint Grid */
+      --bg-canvas: #F4EFE6;
+      --grid-line: #E2DACB;
+      --card-bg: #FAF7F0;
+      
+      /* Primary Inks */
+      --ink-navy: #102235;
+      --ink-navy-faint: rgba(16, 34, 53, 0.12);
+      --ink-navy-shadow: rgba(16, 34, 53, 0.4);
+      --ink-navy-subtle: rgba(16, 34, 53, 0.65);
+      
+      /* Drafting Accents */
+      --accent-ochre: #B0883C;
+      --accent-ochre-light: rgba(176, 136, 60, 0.15);
+      --ghost-graphite: #7D8793;
+      --ghost-graphite-faint: rgba(125, 135, 147, 0.25);
+      --pruned-gray: #A0AAB5;
+
+      /* Typography */
+      --font-draft: 'Architects Daughter', cursive;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      background-color: var(--bg-canvas);
+      background-image: 
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 20px 20px;
+      color: var(--ink-navy);
+      font-family: var(--font-draft);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      user-select: none;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    /* ── Top Header Bar ── */
+    header {
+      height: 56px;
+      background: var(--card-bg);
+      border-bottom: 2px solid var(--ink-navy);
+      box-shadow: 0 2px 0 var(--ink-navy-shadow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .brand-topline {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-title {
+      font-family: var(--font-draft);
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--ink-navy);
+      line-height: 1.1;
+    }
+
+    .brand-subtitle {
+      font-family: var(--font-draft);
+      font-size: 13px;
+      color: var(--ink-navy-subtle);
+      letter-spacing: 0.02em;
+      margin-top: 2px;
+    }
+
+    .header-metrics {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .metric-pill {
+      font-family: var(--font-draft);
+      font-size: 13px;
+      color: var(--ink-navy);
+      background: var(--card-bg);
+      border: 2px solid var(--ink-navy);
+      box-shadow: 2px 2px 0 var(--ink-navy-shadow);
+      padding: 4px 10px;
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .metric-pill strong {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-navy);
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-navy);
+      padding: 4px 10px;
+      background: var(--card-bg);
+      border: 2px solid var(--ink-navy);
+      box-shadow: 2px 2px 0 var(--ink-navy-shadow);
+      border-radius: 2px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10B981;
+      border: 1px solid var(--ink-navy);
+    }
+    .status-dot.paused {
+      background: var(--accent-ochre);
+    }
+
+    /* ── Main Application Grid ── */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 310px 1fr 330px;
+      gap: 12px;
+      padding: 12px 16px;
+      max-width: 1780px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 1240px) {
+      main {
+        grid-template-columns: 290px 1fr;
+      }
+      .right-column {
+        grid-column: 1 / -1;
+      }
+    }
+
+    /* ── Hand-Drafted Card Containers ── */
+    .card {
+      background: var(--card-bg);
+      border: 2px solid var(--ink-navy);
+      box-shadow: 2px 2px 0 var(--ink-navy-shadow);
+      border-radius: 2px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      padding: 5px 8px;
+      border: 1.5px solid var(--ink-navy);
+      background: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 3px,
+        rgba(16, 34, 53, 0.10) 3px,
+        rgba(16, 34, 53, 0.10) 6px
+      );
+    }
+
+    .card-title {
+      font-family: var(--font-draft);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--ink-navy);
+    }
+
+    .card-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-ochre);
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Center Viewport Canvas ── */
+    .viewport-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      padding: 0;
+      background: var(--card-bg);
+      border: 2px solid var(--ink-navy);
+      box-shadow: 2px 2px 0 var(--ink-navy-shadow);
+      border-radius: 2px;
+    }
+
+    .canvas-wrapper {
+      flex: 1;
+      position: relative;
+      width: 100%;
+      min-height: 480px;
+      background-color: var(--bg-canvas);
+      background-image: 
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    #simCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    .canvas-overlay-hud {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink-navy);
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      background: rgba(250, 247, 240, 0.92);
+      border: 1.5px solid var(--ink-navy);
+      box-shadow: 2px 2px 0 var(--ink-navy-shadow);
+      padding: 6px 10px;
+      border-radius: 2px;
+    }
+
+    .canvas-overlay-hud span strong {
+      color: var(--ink-navy);
+      font-weight: 600;
+    }
+
+    .viewport-controls-strip {
+      height: 44px;
+      background: var(--card-bg);
+      border-top: 2px solid var(--ink-navy);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+    }
+
+    .viewport-legend {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-family: var(--font-draft);
+      font-size: 13px;
+      color: var(--ink-navy);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border: 1.5px solid var(--ink-navy);
+      border-radius: 2px;
+    }
+
+    /* ── Topology Card (SVG DAG) ── */
+    .topology-container {
+      width: 100%;
+      background: var(--card-bg);
+      border: 1.5px solid var(--ink-navy);
+      box-shadow: 1px 1px 0 var(--ink-navy-shadow);
+      border-radius: 2px;
+      padding: 0;
+      position: relative;
+      overflow-x: auto;
+      max-height: 290px;
+      overflow-y: auto;
+    }
+
+    .synaptic-ledger-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--font-draft);
+      font-size: 12px;
+      text-align: left;
+    }
+
+    .synaptic-ledger-table thead {
+      position: sticky;
+      top: 0;
+      background: #EFE8DA;
+      border-bottom: 2px solid var(--ink-navy);
+      z-index: 2;
+    }
+
+    .synaptic-ledger-table th {
+      font-family: var(--font-draft);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ink-navy-subtle);
+      letter-spacing: 0.5px;
+      padding: 6px 8px;
+      text-transform: uppercase;
+      border-bottom: 1.5px solid var(--ink-navy);
+    }
+
+    .synaptic-ledger-table td {
+      padding: 5px 8px;
+      border-bottom: 1px dashed rgba(16, 34, 53, 0.18);
+      color: var(--ink-navy);
+      vertical-align: middle;
+    }
+
+    .synaptic-ledger-table tr:hover {
+      background: rgba(176, 136, 60, 0.06);
+    }
+
+    .synaptic-ledger-table .cell-source {
+      font-weight: 700;
+      color: var(--ink-navy);
+    }
+
+    .synaptic-ledger-table .cell-target {
+      color: var(--ink-navy-subtle);
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .synaptic-weight-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 2px;
+      background: #FAF7F0;
+      border: 1px solid var(--accent-ochre);
+      color: var(--ink-navy);
+      display: inline-block;
+      box-shadow: 0.5px 0.5px 0 var(--accent-ochre);
+    }
+
+    .synaptic-weight-na {
+      color: #7D8793;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-style: italic;
+    }
+
+    .status-badge {
+      font-family: var(--font-draft);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 2px;
+      letter-spacing: 0.5px;
+      display: inline-block;
+    }
+
+    .status-expressed {
+      background: rgba(176, 136, 60, 0.14);
+      color: var(--accent-ochre);
+      border: 1px solid var(--accent-ochre);
+    }
+
+    .status-balance {
+      background: rgba(46, 117, 89, 0.15);
+      color: #1E6B48;
+      border: 1px solid #1E6B48;
+    }
+
+    .status-pump {
+      background: rgba(184, 80, 48, 0.15);
+      color: #A33A18;
+      border: 1px solid #A33A18;
+    }
+
+    .status-pruned {
+      background: rgba(125, 135, 147, 0.12);
+      color: #7D8793;
+      border: 1px dashed #7D8793;
+      text-decoration: line-through;
+    }
+
+    .formula-box {
+      margin-top: 8px;
+      padding: 8px 10px;
+      background: var(--card-bg);
+      border: 1.5px solid var(--ink-navy);
+      box-shadow: 1px 1px 0 var(--ink-navy-shadow);
+      border-left: 4px solid var(--accent-ochre);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--ink-navy);
+      line-height: 1.4;
+    }
+    .formula-box strong {
+      font-family: var(--font-draft);
+      color: var(--accent-ochre);
+      font-size: 13px;
+    }
+
+    /* ── Telemetry Numbers & Sparklines ── */
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .telemetry-cell {
+      background: var(--card-bg);
+      border: 1.5px solid var(--ink-navy);
+      box-shadow: 1px 1px 0 var(--ink-navy-shadow);
+      padding: 6px 8px;
+      border-radius: 2px;
+    }
+
+    .cell-label {
+      font-family: var(--font-draft);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-navy-subtle);
+      margin-bottom: 2px;
+    }
+
+    .cell-value {
+      font-family: var(--font-mono);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink-navy);
+    }
+    .cell-value.accent {
+      color: var(--accent-ochre);
+    }
+
+    .sparkline-box {
+      margin-top: 8px;
+      background: var(--card-bg);
+      border: 1.5px solid var(--ink-navy);
+      box-shadow: 1px 1px 0 var(--ink-navy-shadow);
+      border-radius: 2px;
+      padding: 6px 8px;
+    }
+
+    .sparkline-header {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-draft);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-navy);
+      margin-bottom: 4px;
+    }
+    .sparkline-header span:last-child {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--accent-ochre);
+    }
+
+    .sparkline-canvas {
+      width: 100%;
+      height: 44px;
+      display: block;
+    }
+
+    /* ── Control Desk Buttons & Sliders ── */
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    button.btn {
+      appearance: none;
+      border: 2px solid var(--ink-navy);
+      box-shadow: 2px 2px 0 var(--ink-navy-shadow);
+      background: var(--card-bg);
+      color: var(--ink-navy);
+      font-family: var(--font-draft);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 10px;
+      border-radius: 2px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+      text-align: center;
+    }
+
+    button.btn:hover {
+      background: #F2ECE0;
+      border-color: var(--ink-navy);
+    }
+
+    button.btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: none;
+    }
+
+    button.btn-primary {
+      background: #EFE8DA;
+      border-color: var(--ink-navy);
+      color: var(--ink-navy);
+    }
+    button.btn-primary:hover {
+      background: var(--accent-ochre-light);
+    }
+
+    button.btn-active {
+      background: var(--accent-ochre-light);
+      border-color: var(--accent-ochre);
+      color: var(--accent-ochre);
+    }
+
+    .slider-row {
+      margin-top: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-draft);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-navy);
+    }
+    .slider-header span:last-child {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-ochre);
+    }
+
+    input[type=range] {
+      width: 100%;
+      accent-color: var(--accent-ochre);
+      background: #E2DACB;
+      height: 6px;
+      border-radius: 2px;
+      border: 1px solid var(--ink-navy);
+      outline: none;
+    }
+
+    /* ── Audit & Data Export Panel ── */
+    .audit-section {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 2px dashed var(--ink-navy);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .audit-kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      margin-bottom: 8px;
+    }
+
+    .audit-kpi-cell {
+      background: var(--card-bg);
+      border: 1.5px solid var(--ink-navy);
+      box-shadow: 1px 1px 0 var(--ink-navy-shadow);
+      border-radius: 2px;
+      padding: 5px 7px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .audit-kpi-label {
+      font-family: var(--font-draft);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-navy-subtle);
+      margin-bottom: 2px;
+    }
+
+    .audit-kpi-val {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-navy);
+    }
+
+    .audit-kpi-val.highlight,
+    .audit-kpi-val.accent {
+      color: var(--accent-ochre);
+    }
+
+    .audit-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    button.btn-export {
+      background: var(--card-bg);
+      border: 2px solid var(--ink-navy);
+      box-shadow: 2px 2px 0 var(--ink-navy-shadow);
+      color: var(--ink-navy);
+      font-size: 13px;
+      padding: 6px 8px;
+      border-radius: 2px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-family: var(--font-draft);
+      font-weight: 700;
+      text-align: center;
+      width: 100%;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    button.btn-export:hover {
+      background: #F2ECE0;
+    }
+
+    button.btn-export:active {
+      transform: translate(2px, 2px);
+      box-shadow: none;
+    }
+
+    button.btn-export.primary-export {
+      background: #EFE8DA;
+      border-color: var(--ink-navy);
+    }
+
+    button.btn-export.btn-feedback {
+      background: #10B981 !important;
+      border-color: var(--ink-navy) !important;
+      color: #FFFFFF !important;
+      pointer-events: none;
+    }
+
+    .hotkey-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 1px 5px;
+      background: #E2DACB;
+      border: 1px solid var(--ink-navy);
+      border-radius: 2px;
+      color: var(--ink-navy);
+      margin-left: 4px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 2px solid var(--ink-navy);
+      padding: 8px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-draft);
+      font-size: 13px;
+      color: var(--ink-navy);
+      background: var(--card-bg);
+    }
+
+    .key-hints {
+      display: flex;
+      gap: 12px;
+    }
+    .key-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      padding: 1px 5px;
+      background: #E2DACB;
+      border: 1px solid var(--ink-navy);
+      border-radius: 2px;
+      color: var(--ink-navy);
+      font-size: 11px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Top Header ── -->
+  <header>
+    <div class="brand">
+      <div class="brand-topline">
+        <div class="brand-title">NEAT // CARTPOLE SWING-UP</div>
+      </div>
+      <div class="brand-subtitle">Autonomous Controller Visualizer • Hand-Drawn Engineering Blueprint</div>
+    </div>
+
+    <div class="header-metrics">
+      <div class="metric-pill">
+        <span>GENOME:</span>
+        <strong id="hdrGenome">—</strong>
+      </div>
+      <div class="metric-pill">
+        <span>SPEC:</span>
+        <strong id="hdrSpec">—</strong>
+      </div>
+      <div class="status-badge">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">LIVE • 60 HZ</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main Workspace ── -->
+  <main>
+
+    <!-- ── Left Column: Network Architecture & Topology ── -->
+    <div class="left-column" style="display:flex; flex-direction:column; gap:10px;">
+      
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Synaptic Weight Ledger</div>
+          <div class="card-tag" id="dagExpressedTag">LOADING TOPOLOGY...</div>
+        </div>
+        
+        <div class="topology-container" id="topologyContainer">
+          <table class="synaptic-ledger-table" id="synapticTable">
+            <thead>
+              <tr>
+                <th>SOURCE</th>
+                <th>TARGET</th>
+                <th>WEIGHT</th>
+                <th>STATUS</th>
+              </tr>
+            </thead>
+            <tbody id="synapticTableBody">
+              <!-- Dynamically populated by buildSynapticLedger() -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="formula-box">
+          <div style="margin-bottom:4px; font-weight:700; color:var(--ink-navy); font-family:var(--font-draft); font-size:13px;">INFERENCE FORMULA</div>
+          <div id="formulaText" style="font-family:var(--font-mono); font-size:11px;">Loading formula...</div>
+          <div id="formulaPrunedNote" style="margin-top:6px; color:var(--ink-navy-subtle); font-size:10px; font-family:var(--font-draft);">Loading network metadata...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Network Metadata</div>
+          <div class="card-tag">SPEC METRICS</div>
+        </div>
+        <div class="telemetry-grid">
+          <div class="telemetry-cell">
+            <div class="cell-label">Total Parameters</div>
+            <div class="cell-value" id="metaTotalParams">—</div>
+          </div>
+          <div class="telemetry-cell">
+            <div class="cell-label">MAC Proxy Ops</div>
+            <div class="cell-value" id="metaMacOps">—</div>
+          </div>
+          <div class="telemetry-cell">
+            <div class="cell-label">Pruned Connections</div>
+            <div class="cell-value" id="metaPrunedConns">—</div>
+          </div>
+          <div class="telemetry-cell">
+            <div class="cell-label">Hidden Layers</div>
+            <div class="cell-value" id="metaHiddenLayers">—</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Center Column: Physics Viewport ── -->
+    <div class="card viewport-container">
+      <div class="canvas-wrapper">
+        <canvas id="simCanvas"></canvas>
+        <div class="canvas-overlay-hud">
+          <span>X: <strong id="hudX">0.00 m</strong> | Ẋ: <strong id="hudXDot">0.00 m/s</strong></span>
+          <span>θ: <strong id="hudTheta">0.00°</strong> | θ̇: <strong id="hudThetaDot">0.00 rad/s</strong></span>
+          <span>EFFORT: <strong id="hudForce">0.00 N</strong> | REWARD: <strong id="hudReward">+0.00</strong></span>
+        </div>
+      </div>
+
+      <div class="viewport-controls-strip">
+        <div class="viewport-legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#FAF7F0;"></div>
+            <span>Cart (M: 1.0kg)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#FAF7F0; border-color:var(--accent-ochre);"></div>
+            <span>Pole &amp; Bob</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--accent-ochre);"></div>
+            <span>Effort Vector</span>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <button class="btn" id="btnPause" style="padding:4px 12px; font-size:12px;">[PAUSE]</button>
+          <button class="btn" id="btnTrailClear" style="padding:4px 12px; font-size:12px;">[CLEAR TRAIL]</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Right Column: Telemetry & Control Desk ── -->
+    <div class="right-column" style="display:flex; flex-direction:column; gap:10px;">
+      
+      <!-- Telemetry Strip -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Live Telemetry</div>
+          <div class="card-tag" id="stepCounter">STEP: 0</div>
+        </div>
+
+        <div class="telemetry-grid">
+          <div class="telemetry-cell">
+            <div class="cell-label">Pole Angle (θ)</div>
+            <div class="cell-value accent" id="telTheta">0.0°</div>
+          </div>
+          <div class="telemetry-cell">
+            <div class="cell-label">Angular Vel (θ̇)</div>
+            <div class="cell-value" id="telThetaDot">0.00 r/s</div>
+          </div>
+          <div class="telemetry-cell">
+            <div class="cell-label">Cart Position (x)</div>
+            <div class="cell-value" id="telX">0.00 m</div>
+          </div>
+          <div class="telemetry-cell">
+            <div class="cell-label">Motor Torque (u)</div>
+            <div class="cell-value accent" id="telForce">0.0 N</div>
+          </div>
+        </div>
+
+        <!-- Sparkline 1: Angle theta -->
+        <div class="sparkline-box">
+          <div class="sparkline-header">
+            <span>POLE ANGLE θ(t)</span>
+            <span id="sparkThetaVal">0.0°</span>
+          </div>
+          <canvas class="sparkline-canvas" id="sparkTheta"></canvas>
+        </div>
+
+        <!-- Sparkline 2: Control Effort -->
+        <div class="sparkline-box">
+          <div class="sparkline-header">
+            <span>MOTOR FORCE u(t)</span>
+            <span id="sparkForceVal">0.0 N</span>
+          </div>
+          <canvas class="sparkline-canvas" id="sparkForce"></canvas>
+        </div>
+      </div>
+
+      <!-- Control Desk -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Sandbox Control Desk</div>
+          <div class="card-tag">PHYSICAL DISTURBANCES</div>
+        </div>
+
+        <div class="control-group">
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btnImpulseLeft">← KICK LEFT (10N)</button>
+            <button class="btn btn-primary" id="btnImpulseRight">KICK RIGHT (10N) →</button>
+          </div>
+
+          <button class="btn" id="btnPerturbMass">PERTURB +40% MASS [1.4 KG]</button>
+
+          <div class="btn-row">
+            <button class="btn" id="btnResetSwing">RESET (SWING-UP)</button>
+            <button class="btn" id="btnResetUpright">RESET (UPRIGHT)</button>
+          </div>
+        </div>
+
+        <div class="slider-row">
+          <div class="slider-header">
+            <span>CART MASS</span>
+            <span id="valCartMass">1.0 kg</span>
+          </div>
+          <input type="range" id="rngMass" min="0.5" max="2.5" step="0.1" value="1.0">
+        </div>
+
+        <div class="slider-row" style="margin-top:10px;">
+          <div class="slider-header">
+            <span>SENSOR NOISE σ</span>
+            <span id="valNoise">0.00</span>
+          </div>
+          <input type="range" id="rngNoise" min="0.0" max="0.10" step="0.01" value="0.0">
+        </div>
+
+        <!-- ── Audit & Data Export Panel ── -->
+        <div class="audit-section">
+          <div class="card-header" style="margin-bottom: 8px; padding: 4px 8px;">
+            <div class="card-title" style="font-size: 13px;">Audit &amp; Data Export</div>
+            <div class="card-tag" id="auditBufferCount">BUFFER: 0 / 2000</div>
+          </div>
+
+          <div class="audit-kpi-grid">
+            <div class="audit-kpi-cell">
+              <div class="audit-kpi-label">Upright Stability</div>
+              <div class="audit-kpi-val highlight" id="kpiStability">0.0%</div>
+            </div>
+            <div class="audit-kpi-cell">
+              <div class="audit-kpi-label">Active Episode</div>
+              <div class="audit-kpi-val" id="kpiDuration">0.0s <span style="font-size:10px; color:var(--ghost-graphite); font-weight:normal;">(0 stp)</span></div>
+            </div>
+            <div class="audit-kpi-cell">
+              <div class="audit-kpi-label">Mean Reward</div>
+              <div class="audit-kpi-val" id="kpiMeanReward">+0.000</div>
+            </div>
+            <div class="audit-kpi-cell">
+              <div class="audit-kpi-label">Peak Disturbance</div>
+              <div class="audit-kpi-val accent" id="kpiPeakImpulse">0.0 N·s</div>
+            </div>
+          </div>
+
+          <div class="audit-actions">
+            <button class="btn-export primary-export" id="btnCopyMarkdown">
+              <span>[COPY MARKDOWN REPORT]</span><span class="hotkey-badge">[C]</span>
+            </button>
+            <div class="btn-row">
+              <button class="btn-export" id="btnDownloadCsv">[DOWNLOAD CSV]</button>
+              <button class="btn-export" id="btnCopyJson">[COPY RAW JSON]</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer>
+    <div>NEAT CARTPOLE MONOGRAPH • MINIMAL NEURAL CONTROLLER EXPERIMENTAL SUITE</div>
+    <div class="key-hints">
+      <span><span class="key-badge">A</span> / <span class="key-badge">←</span> Kick Left</span>
+      <span><span class="key-badge">D</span> / <span class="key-badge">→</span> Kick Right</span>
+      <span><span class="key-badge">M</span> Mass Shift</span>
+      <span><span class="key-badge">R</span> Reset</span>
+      <span><span class="key-badge">SPACE</span> Pause</span>
+      <span><span class="key-badge">C</span> Copy Report</span>
+    </div>
+  </footer>
+
+  <!-- ── Interactive Client Engine ── -->
+  <script>
+    (function () {
+      'use strict';
+
+      // ── DOM References ──
+      const simCanvas = document.getElementById('simCanvas');
+      const ctx = simCanvas.getContext('2d');
+      const statusDot = document.getElementById('statusDot');
+      const statusText = document.getElementById('statusText');
+
+      const hudX = document.getElementById('hudX');
+      const hudXDot = document.getElementById('hudXDot');
+      const hudTheta = document.getElementById('hudTheta');
+      const hudThetaDot = document.getElementById('hudThetaDot');
+      const hudForce = document.getElementById('hudForce');
+      const hudReward = document.getElementById('hudReward');
+
+      const telX = document.getElementById('telX');
+      const telTheta = document.getElementById('telTheta');
+      const telThetaDot = document.getElementById('telThetaDot');
+      const telForce = document.getElementById('telForce');
+      const stepCounter = document.getElementById('stepCounter');
+
+      const sparkThetaCanvas = document.getElementById('sparkTheta');
+      const sparkForceCanvas = document.getElementById('sparkForce');
+      const sparkThetaCtx = sparkThetaCanvas.getContext('2d');
+      const sparkForceCtx = sparkForceCanvas.getContext('2d');
+      const sparkThetaVal = document.getElementById('sparkThetaVal');
+      const sparkForceVal = document.getElementById('sparkForceVal');
+
+      const btnPause = document.getElementById('btnPause');
+      const btnTrailClear = document.getElementById('btnTrailClear');
+      const btnImpulseLeft = document.getElementById('btnImpulseLeft');
+      const btnImpulseRight = document.getElementById('btnImpulseRight');
+      const btnPerturbMass = document.getElementById('btnPerturbMass');
+      const btnResetSwing = document.getElementById('btnResetSwing');
+      const btnResetUpright = document.getElementById('btnResetUpright');
+      const rngMass = document.getElementById('rngMass');
+      const valCartMass = document.getElementById('valCartMass');
+      const rngNoise = document.getElementById('rngNoise');
+      const valNoise = document.getElementById('valNoise');
+
+      // ── Audit & Data Export DOM References ──
+      const kpiStability = document.getElementById('kpiStability');
+      const kpiDuration = document.getElementById('kpiDuration');
+      const kpiMeanReward = document.getElementById('kpiMeanReward');
+      const kpiPeakImpulse = document.getElementById('kpiPeakImpulse');
+      const auditBufferCount = document.getElementById('auditBufferCount');
+
+      const btnCopyMarkdown = document.getElementById('btnCopyMarkdown');
+      const btnDownloadCsv = document.getElementById('btnDownloadCsv');
+      const btnCopyJson = document.getElementById('btnCopyJson');
+
+      // ── Client-Side Telemetry Ring Buffer (Cap: 2,000 steps) ──
+      const MAX_AUDIT_STEPS = 2000;
+      const auditBuffer = [];
+      let pendingDisturbance = null;
+      let peakDisturbanceRecovered = 0.0;
+
+      function registerImpulse(mag) {
+        const absMag = Math.abs(mag);
+        if (absMag <= 0.01) return;
+        pendingDisturbance = {
+          impulse: absMag,
+          startStep: state.step,
+          disturbed: false,
+          stableCount: 0
+        };
+      }
+
+      // ── Dynamic Model Specification ──
+      let currentModel = null;
+
+      // ── Simulation State Cache ──
+      let state = {
+        x: 0.0,
+        x_dot: 0.0,
+        theta: Math.PI,
+        theta_dot: 0.0,
+        tip_x: 0.0,
+        tip_y: -1.0,
+        action: 0.0,
+        force: 0.0,
+        reward: -1.0,
+        step: 0,
+        cart_mass: 1.0,
+        pole_length: 0.5,
+        mass_perturbed: false,
+        noise_sigma: 0.0,
+        paused: false,
+        inputs: [0, 0, -1, 0, 0],
+        output_value: 0
+      };
+
+      // Kinetic Ghosting Trail of Pendulum Tip
+      const MAX_TRAIL_LENGTH = 55;
+      const tipTrail = [];
+
+      // Telemetry History for Sparklines
+      const MAX_HISTORY = 120;
+      const thetaHistory = new Float32Array(MAX_HISTORY);
+      const forceHistory = new Float32Array(MAX_HISTORY);
+      let historyIdx = 0;
+
+      // ── High-DPI Canvas Resizing ──
+      function resizeCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = simCanvas.parentElement.getBoundingClientRect();
+        simCanvas.width = rect.width * dpr;
+        simCanvas.height = rect.height * dpr;
+        ctx.resetTransform();
+        ctx.scale(dpr, dpr);
+
+        // Sparklines
+        const stRect = sparkThetaCanvas.getBoundingClientRect();
+        sparkThetaCanvas.width = stRect.width * dpr;
+        sparkThetaCanvas.height = stRect.height * dpr;
+        sparkThetaCtx.resetTransform();
+        sparkThetaCtx.scale(dpr, dpr);
+
+        const sfRect = sparkForceCanvas.getBoundingClientRect();
+        sparkForceCanvas.width = sfRect.width * dpr;
+        sparkForceCanvas.height = sfRect.height * dpr;
+        sparkForceCtx.resetTransform();
+        sparkForceCtx.scale(dpr, dpr);
+      }
+      window.addEventListener('resize', resizeCanvas);
+      setTimeout(resizeCanvas, 50);
+
+      // ── Server-Sent Events (SSE) Stream ──
+      let eventSource = null;
+
+      function connectEventSource() {
+        if (eventSource) eventSource.close();
+
+        eventSource = new EventSource('/api/stream');
+
+        eventSource.onopen = function () {
+          statusDot.classList.remove('paused');
+          statusText.textContent = 'LIVE • 60 HZ';
+        };
+
+        eventSource.onmessage = function (e) {
+          try {
+            const data = JSON.parse(e.data);
+            updateSimulationState(data);
+          } catch (err) {
+            console.error('Error parsing SSE data:', err);
+          }
+        };
+
+        eventSource.onerror = function () {
+          statusDot.classList.add('paused');
+          statusText.textContent = 'RECONNECTING...';
+        };
+      }
+
+      function updateSimulationState(data) {
+        state = data;
+
+        // Push to tip trail (world coordinates)
+        const L_total = (data.pole_length || 0.5) * 2.0;
+        const tipWorldX = data.x + L_total * Math.sin(data.theta);
+        const tipWorldY = L_total * Math.cos(data.theta); // > 0 upright, < 0 hanging
+
+        tipTrail.push({ x: tipWorldX, y: tipWorldY, alpha: 1.0 });
+        if (tipTrail.length > MAX_TRAIL_LENGTH) {
+          tipTrail.shift();
+        }
+
+        // Push to sparklines
+        thetaHistory[historyIdx % MAX_HISTORY] = data.theta;
+        forceHistory[historyIdx % MAX_HISTORY] = data.force;
+        historyIdx++;
+
+        // Normalized pole angle: -180° to +180° (0° is vertical upright)
+        let normTheta = ((data.theta + Math.PI) % (2 * Math.PI));
+        if (normTheta < 0) normTheta += 2 * Math.PI;
+        normTheta -= Math.PI;
+        const poleThetaDeg = normTheta * 180 / Math.PI;
+
+        // Push to client-side telemetry ring buffer (cap: 2,000 steps)
+        const record = {
+          step: data.step,
+          time_s: parseFloat((data.step * 0.02).toFixed(3)),
+          cart_x: parseFloat(data.x.toFixed(4)),
+          cart_x_dot: parseFloat(data.x_dot.toFixed(4)),
+          pole_theta_deg: parseFloat(poleThetaDeg.toFixed(2)),
+          pole_theta_dot: parseFloat(data.theta_dot.toFixed(4)),
+          motor_force_N: parseFloat(data.force.toFixed(2)),
+          reward: parseFloat(data.reward.toFixed(4)),
+          cart_mass_kg: parseFloat(data.cart_mass.toFixed(2)),
+          sensor_noise_sigma: parseFloat(data.noise_sigma.toFixed(3))
+        };
+        auditBuffer.push(record);
+        if (auditBuffer.length > MAX_AUDIT_STEPS) {
+          auditBuffer.shift();
+        }
+
+        // External disturbance recovery tracking
+        if (data.last_impulse && data.last_impulse > 0) {
+          if (!pendingDisturbance || (data.step - pendingDisturbance.startStep > 30 && pendingDisturbance.impulse !== data.last_impulse)) {
+            registerImpulse(data.last_impulse);
+          }
+        }
+
+        if (pendingDisturbance) {
+          const absDeg = Math.abs(poleThetaDeg);
+          if (absDeg >= 12.0) {
+            pendingDisturbance.disturbed = true;
+            pendingDisturbance.stableCount = 0;
+          } else {
+            pendingDisturbance.stableCount++;
+            const reqStable = pendingDisturbance.disturbed ? 15 : 25;
+            if (pendingDisturbance.stableCount >= reqStable && Math.abs(data.x) < 2.34) {
+              peakDisturbanceRecovered = Math.max(peakDisturbanceRecovered, pendingDisturbance.impulse);
+              pendingDisturbance = null;
+            }
+          }
+          if (pendingDisturbance && data.step - pendingDisturbance.startStep > 350) {
+            pendingDisturbance = null; // timeout disturbance
+          }
+        }
+
+        // Summary KPI calculations across recorded buffer
+        const bufLen = auditBuffer.length;
+        let uprightCount = 0;
+        let sumReward = 0;
+        for (let i = 0; i < bufLen; i++) {
+          if (Math.abs(auditBuffer[i].pole_theta_deg) < 12.0) {
+            uprightCount++;
+          }
+          sumReward += auditBuffer[i].reward;
+        }
+        const uprightPct = bufLen > 0 ? (uprightCount / bufLen * 100).toFixed(1) : '0.0';
+        const meanReward = bufLen > 0 ? (sumReward / bufLen).toFixed(3) : '+0.000';
+        const durationSec = (data.step * 0.02).toFixed(1);
+
+        // Update Audit Panel KPIs
+        if (kpiStability) kpiStability.textContent = `${uprightPct}%`;
+        if (kpiDuration) kpiDuration.innerHTML = `${durationSec}s <span style="font-size:10px; color:var(--ghost-graphite); font-weight:normal;">(${data.step} stp)</span>`;
+        if (kpiMeanReward) kpiMeanReward.textContent = `${meanReward >= 0 ? '+' : ''}${meanReward}`;
+        if (kpiPeakImpulse) kpiPeakImpulse.textContent = `${peakDisturbanceRecovered.toFixed(1)} N·s`;
+        if (auditBufferCount) auditBufferCount.textContent = `BUFFER: ${bufLen} / ${MAX_AUDIT_STEPS}`;
+
+        // Update HUD
+        hudX.textContent = `${data.x.toFixed(2)} m`;
+        hudXDot.textContent = `${data.x_dot.toFixed(2)} m/s`;
+        hudTheta.textContent = `${poleThetaDeg.toFixed(1)}°`;
+        hudThetaDot.textContent = `${data.theta_dot.toFixed(2)} rad/s`;
+        hudForce.textContent = `${data.force.toFixed(2)} N`;
+        hudReward.textContent = `${data.reward >= 0 ? '+' : ''}${data.reward.toFixed(2)}`;
+
+        // Update Telemetry Panel
+        telX.textContent = `${data.x.toFixed(2)} m`;
+        telTheta.textContent = `${poleThetaDeg.toFixed(1)}°`;
+        telThetaDot.textContent = `${data.theta_dot.toFixed(2)} r/s`;
+        telForce.textContent = `${data.force.toFixed(1)} N`;
+        stepCounter.textContent = `STEP: ${data.step}`;
+
+        sparkThetaVal.textContent = `${poleThetaDeg.toFixed(1)}°`;
+        sparkForceVal.textContent = `${data.force.toFixed(1)} N`;
+
+        // Update Buttons & Sliders
+        if (data.mass_perturbed) {
+          btnPerturbMass.classList.add('btn-active');
+          btnPerturbMass.textContent = `MASS PERTURBED (+40% = ${data.cart_mass.toFixed(1)} KG)`;
+        } else {
+          btnPerturbMass.classList.remove('btn-active');
+          btnPerturbMass.textContent = `PERTURB +40% MASS [${(data.cart_mass * 1.4).toFixed(1)} KG]`;
+        }
+
+        valCartMass.textContent = `${data.cart_mass.toFixed(1)} kg`;
+        rngMass.value = data.cart_mass;
+
+        valNoise.textContent = data.noise_sigma.toFixed(2);
+        rngNoise.value = data.noise_sigma;
+
+        if (data.paused) {
+          statusDot.classList.add('paused');
+          statusText.textContent = 'PAUSED';
+          btnPause.textContent = '[RESUME]';
+        } else {
+          statusDot.classList.remove('paused');
+          statusText.textContent = 'LIVE • 60 HZ';
+          btnPause.textContent = '[PAUSE]';
+        }
+
+        // Pulse SVG network signal paths
+        animateSvgNetwork(data);
+      }
+
+      // ── API Command Dispatcher ──
+      function postControl(cmd, val = null) {
+        if (cmd === 'impulse') {
+          registerImpulse(val !== null ? val : 10.0);
+        } else if (cmd === 'reset') {
+          pendingDisturbance = null;
+        }
+        fetch('/api/control', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: cmd, value: val })
+        }).catch(err => console.error('Control error:', err));
+      }
+
+      // ── Button and Slider Event Bindings ──
+      btnImpulseLeft.addEventListener('click', () => postControl('impulse', -10.0));
+      btnImpulseRight.addEventListener('click', () => postControl('impulse', 10.0));
+      btnPerturbMass.addEventListener('click', () => postControl('toggle_mass_perturb'));
+      btnResetSwing.addEventListener('click', () => postControl('reset', 'down'));
+      btnResetUpright.addEventListener('click', () => postControl('reset', 'up'));
+      btnPause.addEventListener('click', () => postControl('toggle_pause'));
+
+      btnTrailClear.addEventListener('click', () => {
+        tipTrail.length = 0;
+      });
+
+      rngMass.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        valCartMass.textContent = `${val.toFixed(1)} kg`;
+        postControl('set_mass', val);
+      });
+
+      rngNoise.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        valNoise.textContent = val.toFixed(2);
+        postControl('set_noise', val);
+      });
+
+      // ── Audit & Data Export Handlers ──
+      function showButtonFeedback(btn, successLabel = 'Copied to Clipboard ✓') {
+        if (!btn) return;
+        const originalHtml = btn.innerHTML;
+        btn.classList.add('btn-feedback');
+        btn.innerHTML = successLabel;
+        setTimeout(() => {
+          btn.innerHTML = originalHtml;
+          btn.classList.remove('btn-feedback');
+        }, 1800);
+      }
+
+      function copyTextToClipboard(text, onSuccess) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => {
+            if (onSuccess) onSuccess();
+          }).catch(err => {
+            console.warn('Clipboard API write failed, using textarea fallback:', err);
+            fallbackCopy(text);
+            if (onSuccess) onSuccess();
+          });
+        } else {
+          fallbackCopy(text);
+          if (onSuccess) onSuccess();
+        }
+      }
+
+      function fallbackCopy(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try {
+          document.execCommand('copy');
+        } catch (e) {
+          console.error('Fallback execCommand copy failed:', e);
+        }
+        document.body.removeChild(ta);
+      }
+
+      function buildMarkdownReport() {
+        const now = new Date();
+        const timestampStr = now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+        const durationSec = (state.step * 0.02).toFixed(2);
+        const bufLen = auditBuffer.length;
+
+        let uprightCount = 0;
+        let sumReward = 0;
+        let sumForceSq = 0;
+        let maxAbsX = 0;
+        let sumThetaSq = 0;
+
+        for (let i = 0; i < bufLen; i++) {
+          const row = auditBuffer[i];
+          const absDeg = Math.abs(row.pole_theta_deg);
+          if (absDeg < 12.0) uprightCount++;
+          sumReward += row.reward;
+          sumForceSq += row.motor_force_N * row.motor_force_N;
+          maxAbsX = Math.max(maxAbsX, Math.abs(row.cart_x));
+          sumThetaSq += row.pole_theta_deg * row.pole_theta_deg;
+        }
+
+        const uprightPct = bufLen > 0 ? (uprightCount / bufLen * 100).toFixed(1) : '0.0';
+        const meanReward = bufLen > 0 ? (sumReward / bufLen).toFixed(3) : '+0.000';
+        const rmsForce = bufLen > 0 ? Math.sqrt(sumForceSq / bufLen).toFixed(2) : '0.00';
+        const rmsTheta = bufLen > 0 ? Math.sqrt(sumThetaSq / bufLen).toFixed(2) : '0.00';
+
+        const m = currentModel;
+        const modeStr = m ? m.mode : 'performance';
+        const seedStr = m ? m.seed : 42;
+        const activeSyn = m && m.metrics ? m.metrics.active_synapses : 3;
+        const hiddenNeur = m && m.metrics ? m.metrics.hidden_neurons : 0;
+        const prunedCount = m && m.metrics ? m.metrics.pruned_inputs_count : 2;
+        const totalInputs = m && m.metrics ? m.metrics.num_inputs : 5;
+        const prunedPct = Math.round((prunedCount / Math.max(1, totalInputs)) * 100);
+
+        const prunedListStr = (m && m.pruned_inputs && m.pruned_inputs.length > 0)
+          ? m.pruned_inputs.map(p => `${p.label} ($${p.latex_symbol}$)`).join(' and ')
+          : 'None';
+
+        const exprListStr = (m && m.active_inputs && m.active_inputs.length > 0)
+          ? m.active_inputs.map(p => `${p.label} ($${p.latex_symbol}$)`).join(', ')
+          : 'None';
+
+        const formulaLatex = (m && m.formula && m.formula.latex)
+          ? m.formula.latex
+          : 'u = \\text{Formula not loaded}';
+
+        const totalParams = m && m.metrics ? m.metrics.total_parameters : 0;
+        const macOps = m && m.metrics ? m.metrics.theoretical_macs : 0;
+
+        let matrixText = '';
+        if (m && m.connections && m.connections.length > 0) {
+          matrixText = m.connections.map(c => {
+            const status = c.enabled ? '[ACTIVE]' : '[PRUNED / DISABLED]';
+            const sign = c.weight >= 0 ? '+' : '';
+            const srcStr = (c.source_name || `n${c.from}`).padEnd(12, ' ');
+            const dstStr = (c.target_name || `n${c.to}`).padEnd(3, ' ');
+            return `Connection (${srcStr} ->  ${dstStr}): ${sign}${c.weight.toFixed(6).padStart(9, ' ')}  ${status}`;
+          }).join('\n');
+          const biasVal = m.output_bias !== undefined ? m.output_bias : 0.0;
+          matrixText += `\nOutput Bias:                   ${biasVal >= 0 ? '+' : ''}${biasVal.toFixed(6)}`;
+          matrixText += `\nActivation Function:           ${m.output_activation || 'tanh'}`;
+        } else {
+          matrixText = 'No connections loaded.';
+        }
+
+        return `# NEAT Autonomous CartPole Swing-Up — Test Trial Audit Report
+
+**Generated:** ${timestampStr}  
+**Genome Mode:** \`${modeStr}\` | **Random Seed:** ${seedStr} | **Sample Time (dt):** 0.020 s
+
+---
+
+### 1. Model Architecture & Evolved Controller
+- **Model Paradigm:** NeuroEvolution of Augmenting Topologies (NEAT)
+- **Active Complexity:** ${activeSyn} Expressed Synapses | ${hiddenNeur} Hidden Neurons | Direct Feedforward Network
+- **Pruned Inputs (${prunedPct}%):** ${prunedListStr} removed by evolutionary selection
+- **Expressed Inputs:** ${exprListStr}
+- **Inference Closed-Form Equation:**
+  $$${formulaLatex}$$
+- **Compute Efficiency:** ${totalParams} Total Parameters, ${macOps} Theoretical Multiply-Accumulate (MAC) Operations
+
+---
+
+### 2. Experimental Test Conditions
+- **Cart Mass:** ${state.cart_mass.toFixed(2)} kg ${state.mass_perturbed ? '(Perturbed: +40%)' : '(Nominal)'}
+- **Pole Length (Half / Total Reach):** ${state.pole_length.toFixed(2)} m / ${(state.pole_length * 2.0).toFixed(2)} m
+- **Sensor Noise Standard Deviation ($\\sigma$):** ${state.noise_sigma.toFixed(3)}
+- **Rail Bounds:** $\\pm 2.40$ m with restitution stops
+
+---
+
+### 3. Stability & Telemetry Performance KPIs
+| Metric | Observed Value | Engineering Benchmark |
+| :--- | :--- | :--- |
+| **Total Session Duration** | ${durationSec} s (${state.step} timesteps) | Full test duration |
+| **Ring Buffer Depth** | ${bufLen} steps | Cap: 2,000 steps |
+| **Upright Stability Efficiency ($|\\theta| < 12^\\circ$)** | **${uprightPct}%** | $\\ge 90.0\\%$ Required |
+| **Mean Reward Per Step** | **${meanReward >= 0 ? '+' : ''}${meanReward}** | Upper bound: $+1.000$ |
+| **Peak Disturbance Recovered** | **${peakDisturbanceRecovered.toFixed(1)} N\\cdot s** | Impulse survived & stabilized |
+| **RMS Motor Control Effort** | ${rmsForce} N | Max actuator limit: 10.0 N |
+| **Maximum Cart Excursion ($|x|_{\\max}$)** | ${maxAbsX.toFixed(2)} m | Track limit: $\\pm 2.40$ m |
+| **Pole Angle RMS Jitter** | ${rmsTheta}° | Vertical equilibrium precision |
+
+---
+
+### 4. Synaptic Weight Matrix
+\`\`\`text
+${matrixText}
+\`\`\`
+
+*Audit snapshot generated autonomously by NEAT CartPole Telemetry System.*
+`;
+      }
+
+      function downloadTelemetryCsv() {
+        if (auditBuffer.length === 0) {
+          alert('No telemetry data recorded yet in the active session buffer.');
+          return;
+        }
+
+        const headers = [
+          'step',
+          'time_s',
+          'cart_x',
+          'cart_x_dot',
+          'pole_theta_deg',
+          'pole_theta_dot',
+          'motor_force_N',
+          'reward',
+          'cart_mass_kg',
+          'sensor_noise_sigma'
+        ];
+
+        const rows = [headers.join(',')];
+        for (let i = 0; i < auditBuffer.length; i++) {
+          const r = auditBuffer[i];
+          rows.push([
+            r.step,
+            r.time_s.toFixed(3),
+            r.cart_x.toFixed(4),
+            r.cart_x_dot.toFixed(4),
+            r.pole_theta_deg.toFixed(2),
+            r.pole_theta_dot.toFixed(4),
+            r.motor_force_N.toFixed(2),
+            r.reward.toFixed(4),
+            r.cart_mass_kg.toFixed(2),
+            r.sensor_noise_sigma.toFixed(3)
+          ].join(','));
+        }
+
+        const csvContent = rows.join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const ts = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+        a.href = url;
+        a.download = `telemetry_trial_${ts}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      function buildJsonSnapshot() {
+        const durationSec = parseFloat((state.step * 0.02).toFixed(2));
+        const bufLen = auditBuffer.length;
+
+        let uprightCount = 0;
+        let sumReward = 0;
+        for (let i = 0; i < bufLen; i++) {
+          if (Math.abs(auditBuffer[i].pole_theta_deg) < 12.0) uprightCount++;
+          sumReward += auditBuffer[i].reward;
+        }
+        const uprightPct = bufLen > 0 ? parseFloat((uprightCount / bufLen * 100).toFixed(1)) : 0.0;
+        const meanReward = bufLen > 0 ? parseFloat((sumReward / bufLen).toFixed(4)) : 0.0;
+
+        const m = currentModel;
+
+        return {
+          export_timestamp: new Date().toISOString(),
+          trial_id: `trial_${Date.now()}`,
+          model_metadata: {
+            architecture: "NEAT Continuous Swing-Up FeedForward Controller",
+            mode: m ? m.mode : "performance",
+            seed: m ? m.seed : 42,
+            total_parameters: m && m.metrics ? m.metrics.total_parameters : 0,
+            mac_ops: m && m.metrics ? m.metrics.theoretical_macs : 0,
+            hidden_neurons: m && m.metrics ? m.metrics.hidden_neurons : 0,
+            active_synapses: m && m.metrics ? m.metrics.active_synapses : 0,
+            pruned_synapses: m && m.metrics ? m.metrics.pruned_synapses : 0,
+            formula: (m && m.formula) ? m.formula.code : "",
+            bias: m && m.output_bias !== undefined ? m.output_bias : 0.0,
+            activation: m ? m.output_activation : "tanh"
+          },
+          test_conditions: {
+            cart_mass_kg: state.cart_mass,
+            pole_length_m: state.pole_length,
+            sensor_noise_sigma: state.noise_sigma,
+            mass_perturbed: state.mass_perturbed,
+            dt_seconds: 0.02
+          },
+          session_kpis: {
+            episode_duration_s: durationSec,
+            episode_steps: state.step,
+            buffer_steps_count: bufLen,
+            upright_stability_efficiency_pct: uprightPct,
+            mean_reward_per_step: meanReward,
+            peak_disturbance_recovered_ns: parseFloat(peakDisturbanceRecovered.toFixed(2))
+          },
+          topology_weights: (m && m.connections) ? m.connections : [],
+          telemetry_records: auditBuffer
+        };
+      }
+
+      function copyMarkdownReport() {
+        const md = buildMarkdownReport();
+        copyTextToClipboard(md, () => {
+          showButtonFeedback(btnCopyMarkdown, 'Copied to Clipboard ✓');
+        });
+      }
+
+      function copyRawJson() {
+        const jsonText = JSON.stringify(buildJsonSnapshot(), null, 2);
+        copyTextToClipboard(jsonText, () => {
+          showButtonFeedback(btnCopyJson, 'Copied to Clipboard ✓');
+        });
+      }
+
+      // ── Bind Audit Export Buttons ──
+      btnCopyMarkdown.addEventListener('click', copyMarkdownReport);
+      btnDownloadCsv.addEventListener('click', () => {
+        downloadTelemetryCsv();
+        showButtonFeedback(btnDownloadCsv, 'Downloaded CSV ✓');
+      });
+      btnCopyJson.addEventListener('click', copyRawJson);
+
+      // ── Keyboard Shortcuts ──
+      window.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        const key = e.key.toLowerCase();
+        if (key === 'a' || e.key === 'ArrowLeft') {
+          postControl('impulse', -10.0);
+          btnImpulseLeft.style.transform = 'translate(2px, 2px)';
+          setTimeout(() => btnImpulseLeft.style.transform = '', 120);
+        } else if (key === 'd' || e.key === 'ArrowRight') {
+          postControl('impulse', 10.0);
+          btnImpulseRight.style.transform = 'translate(2px, 2px)';
+          setTimeout(() => btnImpulseRight.style.transform = '', 120);
+        } else if (key === 'm') {
+          postControl('toggle_mass_perturb');
+        } else if (key === 'r') {
+          postControl('reset', 'down');
+        } else if (key === 'c') {
+          copyMarkdownReport();
+        } else if (key === ' ') {
+          e.preventDefault();
+          postControl('toggle_pause');
+        }
+      });
+
+      // ── 60 FPS HTML5 Canvas Rendering (Sketched Architectural Blueprint) ──
+      function renderLoop() {
+        drawSimulation();
+        drawSparklines();
+        requestAnimationFrame(renderLoop);
+      }
+
+      function drawSimulation() {
+        const rect = simCanvas.getBoundingClientRect();
+        const W = rect.width;
+        const H = rect.height;
+
+        ctx.clearRect(0, 0, W, H);
+
+        // 0. Blueprint Drafting Paper Background with Fine Grid
+        ctx.fillStyle = '#F4EFE6';
+        ctx.fillRect(0, 0, W, H);
+
+        const gridSize = 20;
+        ctx.strokeStyle = '#E2DACB';
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        for (let x = 0; x < W; x += gridSize) {
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, H);
+        }
+        for (let y = 0; y < H; y += gridSize) {
+          ctx.moveTo(0, y);
+          ctx.lineTo(W, y);
+        }
+        ctx.stroke();
+
+        // Coordinate transforms
+        const trackPixels = W * 0.74;
+        const scale = trackPixels / 4.8; // pixels per meter
+        const cx = W / 2.0;
+        const cy = H * 0.58; // baseline track height
+
+        const trackHalfWidth = 2.4 * scale;
+        const leftLimitX = cx - trackHalfWidth;
+        const rightLimitX = cx + trackHalfWidth;
+
+        // 1. Ground Rail & Technical Baseline
+        ctx.strokeStyle = '#102235';
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.moveTo(leftLimitX - 16, cy);
+        ctx.lineTo(rightLimitX + 16, cy);
+        ctx.stroke();
+
+        // Rail Limit Stops at ±2.4m
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.moveTo(leftLimitX, cy - 14);
+        ctx.lineTo(leftLimitX, cy + 14);
+        ctx.moveTo(rightLimitX, cy - 14);
+        ctx.lineTo(rightLimitX, cy + 14);
+        ctx.stroke();
+
+        // Cross-hatched ground shading under track & stops
+        ctx.strokeStyle = 'rgba(16, 34, 53, 0.4)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        for (let hx = leftLimitX - 14; hx <= rightLimitX + 14; hx += 8) {
+          ctx.moveTo(hx, cy);
+          ctx.lineTo(hx - 6, cy + 8);
+        }
+        ctx.stroke();
+
+        // Architectural Dimension Bar Beneath Rail: |←----- 4.8m TRACK CLEARANCE -----→|
+        const dimY = cy + 42;
+        ctx.strokeStyle = '#102235';
+        ctx.lineWidth = 1.5;
+
+        // Dimension line
+        ctx.beginPath();
+        ctx.moveTo(leftLimitX, dimY);
+        ctx.lineTo(rightLimitX, dimY);
+        // Extension guide lines from rail to dimension bar
+        ctx.moveTo(leftLimitX, cy + 14);
+        ctx.lineTo(leftLimitX, dimY + 8);
+        ctx.moveTo(rightLimitX, cy + 14);
+        ctx.lineTo(rightLimitX, dimY + 8);
+        ctx.stroke();
+
+        // Arrows on dimension bar
+        ctx.fillStyle = '#102235';
+        ctx.beginPath();
+        // Left arrow
+        ctx.moveTo(leftLimitX, dimY);
+        ctx.lineTo(leftLimitX + 8, dimY - 3.5);
+        ctx.lineTo(leftLimitX + 8, dimY + 3.5);
+        ctx.closePath();
+        ctx.fill();
+        // Right arrow
+        ctx.beginPath();
+        ctx.moveTo(rightLimitX, dimY);
+        ctx.lineTo(rightLimitX - 8, dimY - 3.5);
+        ctx.lineTo(rightLimitX - 8, dimY + 3.5);
+        ctx.closePath();
+        ctx.fill();
+
+        // Dimension Label
+        ctx.font = '13px "Architects Daughter", cursive';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#FAF7F0';
+        ctx.fillRect(cx - 100, dimY - 9, 200, 18);
+        ctx.fillStyle = '#102235';
+        ctx.fillText('4.8m TRACK CLEARANCE', cx, dimY);
+
+        // Boundary tick labels at ±2.4m
+        ctx.font = '11px "JetBrains Mono", monospace';
+        ctx.fillText('-2.4m', leftLimitX, cy - 20);
+        ctx.fillText('+2.4m', rightLimitX, cy - 20);
+
+        // 2. Compute Cart & Pendulum Positions
+        const cartX = cx + state.x * scale;
+        const cartY = cy;
+
+        const cartWidth = 62;
+        const cartHeight = 26;
+
+        const poleL = (state.pole_length || 0.5) * 2.0; // 1.0m total
+        const polePixelLength = poleL * scale;
+
+        const tipX = cartX + polePixelLength * Math.sin(state.theta);
+        const tipY = cartY - polePixelLength * Math.cos(state.theta);
+
+        // 3. Compass Ghosting Trail (Concentric Arc Sweeps in Faded Graphite)
+        if (tipTrail.length > 2) {
+          ctx.save();
+          for (let i = 1; i < tipTrail.length; i++) {
+            const p0 = tipTrail[i - 1];
+            const p1 = tipTrail[i];
+            const px0 = cx + p0.x * scale;
+            const py0 = cy - p0.y * scale;
+            const px1 = cx + p1.x * scale;
+            const py1 = cy - p1.y * scale;
+
+            const progress = i / tipTrail.length;
+            const alpha = 0.05 + progress * 0.25;
+
+            // Ghost graphite compass mark
+            ctx.strokeStyle = `rgba(16, 34, 53, ${alpha})`;
+            ctx.lineWidth = 1.0 + progress * 0.8;
+            ctx.beginPath();
+            ctx.moveTo(px0, py0);
+            ctx.lineTo(px1, py1);
+            ctx.stroke();
+
+            // Subtle compass radial arc guides
+            if (i % 6 === 0) {
+              ctx.strokeStyle = 'rgba(16, 34, 53, 0.08)';
+              ctx.setLineDash([2, 4]);
+              ctx.beginPath();
+              ctx.moveTo(cartX, cartY);
+              ctx.lineTo(px1, py1);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            }
+          }
+          ctx.restore();
+        }
+
+        // 4. Effort Vector (Technical Ochre/Gold Arrow #B0883C)
+        const forceMag = state.force; // -10N to +10N
+        if (Math.abs(forceMag) > 0.05) {
+          ctx.save();
+          const arrowLength = (forceMag / 10.0) * 85;
+          const arrowStartX = cartX;
+          const arrowStartY = cartY + 20;
+          const arrowEndX = cartX + arrowLength;
+
+          ctx.strokeStyle = '#B0883C';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(arrowStartX, arrowStartY);
+          ctx.lineTo(arrowEndX, arrowStartY);
+          ctx.stroke();
+
+          // Arrowhead
+          const sign = forceMag > 0 ? 1 : -1;
+          ctx.fillStyle = '#B0883C';
+          ctx.beginPath();
+          ctx.moveTo(arrowEndX, arrowStartY);
+          ctx.lineTo(arrowEndX - sign * 8, arrowStartY - 5);
+          ctx.lineTo(arrowEndX - sign * 8, arrowStartY + 5);
+          ctx.closePath();
+          ctx.fill();
+
+          // Effort readout annotation
+          const forceText = `EFFORT: ${forceMag > 0 ? '+' : ''}${forceMag.toFixed(2)} N`;
+          ctx.font = '12px "Architects Daughter", cursive';
+          ctx.fillStyle = '#B0883C';
+          ctx.textAlign = forceMag > 0 ? 'left' : 'right';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(forceText, arrowEndX + sign * 6, arrowStartY - 4);
+          ctx.restore();
+        }
+
+        // 5. The Pole & Pendulum (Technical Double-Line + Cross-Hatched Bob)
+        ctx.save();
+        // Technical double line for pole
+        const poleAngle = Math.atan2(tipY - cartY, tipX - cartX);
+        const perpX = Math.cos(poleAngle + Math.PI / 2) * 2.0;
+        const perpY = Math.sin(poleAngle + Math.PI / 2) * 2.0;
+
+        ctx.strokeStyle = '#102235';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(cartX + perpX, cartY + perpY);
+        ctx.lineTo(tipX + perpX, tipY + perpY);
+        ctx.moveTo(cartX - perpX, cartY - perpY);
+        ctx.lineTo(tipX - perpX, tipY - perpY);
+        ctx.stroke();
+
+        // Pole Dimension Annotation Callout: L: 0.5m
+        const midPoleX = (cartX + tipX) / 2.0;
+        const midPoleY = (cartY + tipY) / 2.0;
+        const normPerpX = Math.cos(poleAngle + Math.PI / 2) * 16;
+        const normPerpY = Math.sin(poleAngle + Math.PI / 2) * 16;
+        
+        ctx.strokeStyle = 'rgba(16, 34, 53, 0.4)';
+        ctx.lineWidth = 1.0;
+        ctx.setLineDash([2, 2]);
+        ctx.beginPath();
+        ctx.moveTo(midPoleX, midPoleY);
+        ctx.lineTo(midPoleX + normPerpX, midPoleY + normPerpY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.font = '12px "Architects Daughter", cursive';
+        ctx.fillStyle = '#102235';
+        ctx.textAlign = normPerpX > 0 ? 'left' : 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`L: ${(state.pole_length || 0.5).toFixed(1)}m`, midPoleX + normPerpX + (normPerpX > 0 ? 4 : -4), midPoleY + normPerpY);
+
+        // Pendulum Bob: Double-circle with cross-hatch interior
+        const bobR = 8.5;
+        ctx.fillStyle = '#FAF7F0';
+        ctx.beginPath();
+        ctx.arc(tipX, tipY, bobR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Cross-hatch interior
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(tipX, tipY, bobR, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.strokeStyle = 'rgba(16, 34, 53, 0.45)';
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        for (let k = -bobR * 2; k <= bobR * 2; k += 4) {
+          ctx.moveTo(tipX + k, tipY - bobR);
+          ctx.lineTo(tipX + k + bobR * 2, tipY + bobR);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // Double ring for bob
+        ctx.strokeStyle = '#102235';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(tipX, tipY, bobR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.arc(tipX, tipY, bobR - 2.5, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Bob mass annotation callout: m: 0.1kg
+        ctx.font = '12px "Architects Daughter", cursive';
+        ctx.fillStyle = '#102235';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('m: 0.1kg', tipX + 12, tipY - 4);
+        ctx.restore();
+
+        // 6. The Cart: Technical Rectangle with 45° Cross-Hatching & Concentric Wheels
+        ctx.save();
+        const cLeft = cartX - cartWidth / 2;
+        const cTop = cartY - cartHeight / 2;
+
+        // Off-white base
+        ctx.fillStyle = '#FAF7F0';
+        ctx.fillRect(cLeft, cTop, cartWidth, cartHeight);
+
+        // 45° diagonal cross-hatching inside cart
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(cLeft, cTop, cartWidth, cartHeight);
+        ctx.clip();
+        ctx.strokeStyle = 'rgba(16, 34, 53, 0.25)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        for (let ox = -cartHeight; ox <= cartWidth + cartHeight; ox += 6) {
+          ctx.moveTo(cLeft + ox, cTop + cartHeight);
+          ctx.lineTo(cLeft + ox + cartHeight, cTop);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // Cart perimeter border
+        ctx.strokeStyle = '#102235';
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(cLeft, cTop, cartWidth, cartHeight);
+
+        // Wheels: Dual wheels with concentric pivot circles
+        const wheelY = cartY + cartHeight / 2 + 3;
+        const wheelR = 5.5;
+        const w1X = cartX - cartWidth / 3;
+        const w2X = cartX + cartWidth / 3;
+
+        [w1X, w2X].forEach(wx => {
+          ctx.fillStyle = '#FAF7F0';
+          ctx.beginPath();
+          ctx.arc(wx, wheelY, wheelR, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = '#102235';
+          ctx.lineWidth = 2.0;
+          ctx.stroke();
+
+          // Concentric inner circle
+          ctx.lineWidth = 1.0;
+          ctx.beginPath();
+          ctx.arc(wx, wheelY, 2.2, 0, Math.PI * 2);
+          ctx.stroke();
+        });
+
+        // Cart center pivot bearing
+        ctx.fillStyle = '#FAF7F0';
+        ctx.strokeStyle = '#102235';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(cartX, cartY, 4.0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#102235';
+        ctx.beginPath();
+        ctx.arc(cartX, cartY, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Cart Mass Label beside cart: M: 1.0kg with drafting callout pointer
+        ctx.font = '13px "Architects Daughter", cursive';
+        ctx.fillStyle = '#102235';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`M: ${(state.cart_mass || 1.0).toFixed(1)}kg`, cartX + cartWidth / 2 + 8, cartY);
+
+        ctx.strokeStyle = '#102235';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(cartX + cartWidth / 2 + 2, cartY);
+        ctx.lineTo(cartX + cartWidth / 2 + 7, cartY);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      // ── Sparkline Minimalist Charts (Architectural Drafting Style) ──
+      function drawSparklines() {
+        drawSingleSparkline(sparkThetaCanvas, sparkThetaCtx, thetaHistory, -Math.PI, Math.PI, '#B0883C', 0.0);
+        drawSingleSparkline(sparkForceCanvas, sparkForceCtx, forceHistory, -10.0, 10.0, '#102235', 0.0);
+      }
+
+      function drawSingleSparkline(canvas, cctx, buffer, minVal, maxVal, strokeColor, zeroVal = 0.0) {
+        const W = canvas.getBoundingClientRect().width;
+        const H = canvas.getBoundingClientRect().height;
+
+        cctx.clearRect(0, 0, W, H);
+
+        cctx.fillStyle = '#FAF7F0';
+        cctx.fillRect(0, 0, W, H);
+
+        // Drafting zero reference line
+        const zeroY = H - ((zeroVal - minVal) / (maxVal - minVal)) * H;
+        cctx.strokeStyle = 'rgba(16, 34, 53, 0.25)';
+        cctx.lineWidth = 1;
+        cctx.setLineDash([2, 3]);
+        cctx.beginPath();
+        cctx.moveTo(0, zeroY);
+        cctx.lineTo(W, zeroY);
+        cctx.stroke();
+        cctx.setLineDash([]);
+
+        // Historical trace
+        cctx.strokeStyle = strokeColor;
+        cctx.lineWidth = 1.6;
+        cctx.beginPath();
+
+        const step = W / (MAX_HISTORY - 1);
+        let started = false;
+
+        for (let i = 0; i < MAX_HISTORY; i++) {
+          const idx = (historyIdx + i) % MAX_HISTORY;
+          const val = buffer[idx];
+          const clamped = Math.max(minVal, Math.min(maxVal, val));
+          const y = H - ((clamped - minVal) / (maxVal - minVal)) * H;
+          const x = i * step;
+
+          if (!started) {
+            cctx.moveTo(x, y);
+            started = true;
+          } else {
+            cctx.lineTo(x, y);
+          }
+        }
+        cctx.stroke();
+      }
+
+      // ── Dynamic SVG Topology Generator & Anti-Collision Engine ──
+      const DEFAULT_INPUTS = [
+        { id: -1, name: 'x', label: 'Cart Pos (x)', expressed: false },
+        { id: -2, name: 'ẋ', label: 'Cart Vel (ẋ)', expressed: false },
+        { id: -3, name: 'cos θ', label: 'Pole cos(θ)', expressed: true },
+        { id: -4, name: 'sin θ', label: 'Pole sin(θ)', expressed: true },
+        { id: -5, name: 'θ̇', label: 'Pole Vel (θ̇)', expressed: true }
+      ];
+
+      function updateModelUI(model) {
+        if (!model) return;
+
+        // 1. Header pills
+        const hdrGenome = document.getElementById('hdrGenome');
+        const hdrSpec = document.getElementById('hdrSpec');
+        if (hdrGenome && model.metrics) {
+          hdrGenome.textContent = `${model.metrics.hidden_neurons} Hidden | ${model.metrics.active_synapses} Synapses | ${model.metrics.theoretical_macs} MACs`;
+        }
+        if (hdrSpec) {
+          hdrSpec.textContent = `Mode: ${model.mode} | Seed: ${model.seed}`;
+        }
+
+        // 2. Topology tag
+        const dagTag = document.getElementById('dagExpressedTag');
+        if (dagTag && model.metrics) {
+          dagTag.textContent = `${model.metrics.active_synapses} EXPRESSED SYNAPSES`;
+        }
+
+        // 3. Formula box
+        const formulaText = document.getElementById('formulaText');
+        const formulaPrunedNote = document.getElementById('formulaPrunedNote');
+        if (formulaText && model.formula) {
+          formulaText.textContent = model.formula.display;
+        }
+        if (formulaPrunedNote && model.formula) {
+          formulaPrunedNote.textContent = model.formula.pruned_note;
+        }
+
+        // 4. Network metadata cards
+        const metaTotalParams = document.getElementById('metaTotalParams');
+        const metaMacOps = document.getElementById('metaMacOps');
+        const metaPrunedConns = document.getElementById('metaPrunedConns');
+        const metaHiddenLayers = document.getElementById('metaHiddenLayers');
+
+        if (model.metrics) {
+          if (metaTotalParams) metaTotalParams.textContent = model.metrics.total_parameters;
+          if (metaMacOps) metaMacOps.textContent = model.metrics.theoretical_macs;
+          if (metaPrunedConns) {
+            const totalConns = (model.metrics.active_synapses || 0) + (model.metrics.pruned_synapses || 0);
+            const prunedPct = totalConns > 0 ? Math.round((model.metrics.pruned_synapses / totalConns) * 100) : 0;
+            metaPrunedConns.textContent = `${model.metrics.pruned_synapses} / ${totalConns} (${prunedPct}%)`;
+          }
+          if (metaHiddenLayers) metaHiddenLayers.textContent = model.metrics.hidden_neurons;
+        }
+      }
+
+      function buildSynapticLedger(model) {
+        const tbody = document.getElementById('synapticTableBody');
+        const dagTag = document.getElementById('dagExpressedTag');
+        const cardTitle = document.querySelector('.left-column .card .card-title');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        const m = model || currentModel;
+        const isHybrid = m && (m.controller_type === 'hybrid' || m.mode === 'hybrid');
+
+        if (isHybrid) {
+          if (cardTitle) cardTitle.textContent = 'Architectural Gain Matrix';
+          if (dagTag) dagTag.textContent = '6 MACs • DUAL-REGIME';
+
+          // Render 6 deterministic gains with their active operating regime
+          const hybridConns = (m && m.connections) ? m.connections : [
+            { source_name: 'x (Cart Pos)', target_name: 'u (Balance)', weight: 0.80, gain_name: 'K_x', regime: 'BALANCE' },
+            { source_name: 'ẋ (Cart Vel)', target_name: 'u (Balance)', weight: 1.20, gain_name: 'K_x_dot', regime: 'BALANCE' },
+            { source_name: 'θ (Pole Angle)', target_name: 'u (Balance)', weight: 35.00, gain_name: 'K_theta', regime: 'BALANCE' },
+            { source_name: 'θ̇ (Pole Vel)', target_name: 'u (Balance)', weight: 6.50, gain_name: 'K_theta_dot', regime: 'BALANCE' },
+            { source_name: 'E (Energy Error)', target_name: 'u (Pump)', weight: 0.60, gain_name: 'k_E', regime: 'PUMP' },
+            { source_name: 'x (Cart Center)', target_name: 'u (Pump)', weight: -0.50, gain_name: 'k_x', regime: 'PUMP' }
+          ];
+
+          hybridConns.forEach(c => {
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-regime', c.regime);
+
+            const tdSource = document.createElement('td');
+            tdSource.className = 'cell-source';
+            tdSource.textContent = c.source_name;
+            tr.appendChild(tdSource);
+
+            const tdTarget = document.createElement('td');
+            tdTarget.className = 'cell-target';
+            tdTarget.textContent = c.target_name;
+            tr.appendChild(tdTarget);
+
+            const tdWeight = document.createElement('td');
+            const weightVal = typeof c.weight === 'number' ? c.weight : 0;
+            const weightStr = `${weightVal >= 0 ? '+' : ''}${weightVal.toFixed(2)}`;
+            const badge = document.createElement('span');
+            badge.className = 'synaptic-weight-badge';
+            badge.textContent = `${c.gain_name ? c.gain_name + '=' : ''}${weightStr}`;
+            tdWeight.appendChild(badge);
+            tr.appendChild(tdWeight);
+
+            const tdStatus = document.createElement('td');
+            const statusBadge = document.createElement('span');
+            statusBadge.className = 'status-badge ' + (c.regime === 'BALANCE' ? 'status-balance' : 'status-pump');
+            statusBadge.textContent = c.regime === 'BALANCE' ? 'LQR BALANCE' : 'SWING-UP PUMP';
+            tdStatus.appendChild(statusBadge);
+            tr.appendChild(tdStatus);
+
+            tbody.appendChild(tr);
+          });
+
+          // Formula box update
+          const formulaText = document.getElementById('formulaText');
+          const formulaPrunedNote = document.getElementById('formulaPrunedNote');
+          if (formulaText && m.formula && m.formula.display) {
+            formulaText.style.whiteSpace = 'pre-line';
+            formulaText.textContent = m.formula.display;
+          }
+          if (formulaPrunedNote && m.formula && m.formula.pruned_note) {
+            formulaPrunedNote.textContent = m.formula.pruned_note;
+          }
+          return;
+        }
+
+        // Standard NEAT neural topology rendering
+        if (cardTitle) cardTitle.textContent = 'Synaptic Weight Ledger';
+        const inputs = (m && m.inputs) ? m.inputs : DEFAULT_INPUTS;
+        const activeConns = (m && m.active_connections) ? m.active_connections : [];
+        const disabledConns = (m && m.disabled_connections) ? m.disabled_connections : [];
+        const hiddenNodes = (m && m.hidden_nodes) ? m.hidden_nodes : [];
+
+        // Map inputs and hidden nodes to readable names
+        const nodeNameMap = new Map();
+        inputs.forEach(n => {
+          let desc = n.name || `in_${Math.abs(n.id)}`;
+          if (n.label) {
+            const parenMatch = n.label.match(/^(.*?)\s*\((.*?)\)$/);
+            if (parenMatch) {
+              desc = `${n.name} (${parenMatch[1].trim()})`;
+            } else {
+              desc = `${n.name} (${n.label})`;
+            }
+          }
+          nodeNameMap.set(n.id, desc);
+        });
+
+        hiddenNodes.forEach(hn => {
+          nodeNameMap.set(hn.id, hn.name || `h${hn.id} (Hidden)`);
+        });
+
+        nodeNameMap.set(0, 'u (Force)');
+
+        // Set of pruned input IDs
+        const prunedInputIds = new Set();
+        if (m && Array.isArray(m.pruned_inputs)) {
+          m.pruned_inputs.forEach(p => {
+            if (typeof p === 'object' && p !== null) {
+              if (p.id !== undefined) prunedInputIds.add(p.id);
+              if (p.name !== undefined) prunedInputIds.add(p.name);
+            } else {
+              prunedInputIds.add(p);
+            }
+          });
+        }
+
+        function isInputPruned(n) {
+          if (prunedInputIds.size > 0) {
+            return prunedInputIds.has(n.id) || prunedInputIds.has(n.name);
+          }
+          return n.expressed === false;
+        }
+
+        // 1. Add Active Connections (EXPRESSED)
+        const sortedActive = [...activeConns].filter(c => c.enabled !== false);
+        sortedActive.sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
+
+        const activeSourceIds = new Set();
+
+        sortedActive.forEach(c => {
+          activeSourceIds.add(c.from);
+          const tr = document.createElement('tr');
+
+          const tdSource = document.createElement('td');
+          tdSource.className = 'cell-source';
+          tdSource.textContent = nodeNameMap.get(c.from) || c.source_name || `Node ${c.from}`;
+          tr.appendChild(tdSource);
+
+          const tdTarget = document.createElement('td');
+          tdTarget.className = 'cell-target';
+          tdTarget.textContent = nodeNameMap.get(c.to) || c.target_name || (c.to === 0 ? 'u (Force)' : `h${c.to}`);
+          tr.appendChild(tdTarget);
+
+          const tdWeight = document.createElement('td');
+          const weightVal = typeof c.weight === 'number' ? c.weight : 0;
+          const weightStr = `${weightVal >= 0 ? '+' : ''}${weightVal.toFixed(2)}`;
+          const badge = document.createElement('span');
+          badge.className = 'synaptic-weight-badge';
+          badge.textContent = weightStr;
+          tdWeight.appendChild(badge);
+          tr.appendChild(tdWeight);
+
+          const tdStatus = document.createElement('td');
+          const statusBadge = document.createElement('span');
+          statusBadge.className = 'status-badge status-expressed';
+          statusBadge.textContent = 'EXPRESSED';
+          tdStatus.appendChild(statusBadge);
+          tr.appendChild(tdStatus);
+
+          tbody.appendChild(tr);
+        });
+
+        // 2. Add Pruned Inputs (PRUNED)
+        inputs.forEach(n => {
+          if (isInputPruned(n) || !activeSourceIds.has(n.id)) {
+            const tr = document.createElement('tr');
+
+            const tdSource = document.createElement('td');
+            tdSource.className = 'cell-source';
+            tdSource.style.color = '#7D8793';
+            tdSource.textContent = nodeNameMap.get(n.id) || n.name || `Node ${n.id}`;
+            tr.appendChild(tdSource);
+
+            const tdTarget = document.createElement('td');
+            tdTarget.className = 'cell-target';
+            tdTarget.textContent = 'u (Force)';
+            tr.appendChild(tdTarget);
+
+            const tdWeight = document.createElement('td');
+            const naSpan = document.createElement('span');
+            naSpan.className = 'synaptic-weight-na';
+            naSpan.textContent = '—';
+            tdWeight.appendChild(naSpan);
+            tr.appendChild(tdWeight);
+
+            const tdStatus = document.createElement('td');
+            const statusBadge = document.createElement('span');
+            statusBadge.className = 'status-badge status-pruned';
+            statusBadge.textContent = 'PRUNED';
+            tdStatus.appendChild(statusBadge);
+            tr.appendChild(tdStatus);
+
+            tbody.appendChild(tr);
+          }
+        });
+
+        // 3. Add any disabled connections from disabledConns that aren't already covered
+        disabledConns.forEach(c => {
+          if (c.from !== undefined && !isInputPruned({ id: c.from, name: c.source_name })) {
+            const tr = document.createElement('tr');
+
+            const tdSource = document.createElement('td');
+            tdSource.className = 'cell-source';
+            tdSource.style.color = '#7D8793';
+            tdSource.textContent = nodeNameMap.get(c.from) || c.source_name || `Node ${c.from}`;
+            tr.appendChild(tdSource);
+
+            const tdTarget = document.createElement('td');
+            tdTarget.className = 'cell-target';
+            tdTarget.textContent = nodeNameMap.get(c.to) || c.target_name || (c.to === 0 ? 'u (Force)' : `h${c.to}`);
+            tr.appendChild(tdTarget);
+
+            const tdWeight = document.createElement('td');
+            const weightVal = typeof c.weight === 'number' ? c.weight : 0;
+            const naSpan = document.createElement('span');
+            naSpan.className = 'synaptic-weight-na';
+            naSpan.textContent = `${weightVal >= 0 ? '+' : ''}${weightVal.toFixed(2)}`;
+            tdWeight.appendChild(naSpan);
+            tr.appendChild(tdWeight);
+
+            const tdStatus = document.createElement('td');
+            const statusBadge = document.createElement('span');
+            statusBadge.className = 'status-badge status-pruned';
+            statusBadge.textContent = 'PRUNED';
+            tdStatus.appendChild(statusBadge);
+            tr.appendChild(tdStatus);
+
+            tbody.appendChild(tr);
+          }
+        });
+
+        // Update tag
+        if (dagTag) {
+          dagTag.textContent = `${sortedActive.length} EXPRESSED SYNAPSES`;
+        }
+
+        // Dynamically update closed-form formula string:
+        const formulaText = document.getElementById('formulaText');
+        const formulaPrunedNote = document.getElementById('formulaPrunedNote');
+
+        if (m && m.formula && m.formula.display) {
+          if (formulaText) formulaText.textContent = m.formula.display;
+          if (formulaPrunedNote) formulaPrunedNote.textContent = m.formula.pruned_note;
+        } else {
+          const outBias = (m && m.output_bias !== undefined) ? m.output_bias : 0.0;
+          const terms = sortedActive.map(c => {
+            const w = c.weight || 0.0;
+            const sign = w >= 0 ? '+' : '-';
+            const sName = (m && m.inputs ? m.inputs.find(inp => inp.id === c.from)?.name : null) || `x_{${Math.abs(c.from)}}`;
+            return `${sign} ${Math.abs(w).toFixed(2)}·${sName}`;
+          });
+          let inner = "";
+          if (outBias !== 0) {
+            inner = `${outBias.toFixed(3)} ${terms.join(' ')}`;
+          } else {
+            inner = terms.join(' ').replace(/^\+\s*/, '');
+          }
+          if (!inner.trim()) inner = "0.00";
+          const formulaStr = `u = tanh(${inner.trim()})`;
+          if (formulaText) formulaText.textContent = formulaStr;
+        }
+      }
+
+      const buildSvgTopology = buildSynapticLedger;
+
+      function animateSvgNetwork(data) {
+        const outCircleInner = document.getElementById('outNodeCircleInner');
+        if (outCircleInner) {
+          const act = Math.abs(data.action || 0.0);
+          outCircleInner.setAttribute('stroke-width', (1.5 + act * 2.0).toFixed(1));
+          outCircleInner.setAttribute('stroke', act > 0.3 ? '#B0883C' : 'rgba(176, 136, 60, 0.5)');
+        }
+      }
+
+      // ── Dynamic Model Specification Loader ──
+      async function loadModelData() {
+        try {
+          const resp = await fetch('/api/model');
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          currentModel = await resp.json();
+          updateModelUI(currentModel);
+          buildSvgTopology(currentModel);
+        } catch (err) {
+          console.warn('Failed to load /api/model dynamically:', err);
+          buildSvgTopology(null);
+        }
+      }
+
+      // ── Initialize App ──
+      loadModelData();
+      connectEventSource();
+      requestAnimationFrame(renderLoop);
+
+    })();
+  </script>
+</body>
+</html>

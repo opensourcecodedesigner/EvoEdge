@@ -1,0 +1,13 @@
+task,controller,mean_reward,std_reward,boundary_violation_rate,steady_state_jitter_rms,active_parameters,theoretical_macs,mcu_execution_cycles,cart_mass_scale,obs_noise_sigma,total_episodes,stable_episodes
+Task A (Balancing) - Nominal,Classical LQR,499.66,0.27,0.0,0.0024,4,4,Estimated cycle bounds on Xtensa LX6 @ 240MHz: ~120–180 cycles,1.0,0.0,100,100
+Task A (Balancing) - Nominal,Hybrid ES-LQR,499.69,0.25,0.0,0.3911,7,7,Estimated cycle bounds on Xtensa LX6 @ 240MHz: ~200–280 cycles,1.0,0.0,100,100
+Task A (Balancing) - Nominal,TinyML-Neural,495.31,35.27,1.0,2.4888,22,22,Estimated cycle bounds on Xtensa LX6 @ 240MHz: ~450–600 cycles including trig library,1.0,0.0,100,99
+Task B (Swing-Up) - Nominal,Classical LQR,-498.23,2.4,0.0,175.3654,4,4,Estimated cycle bounds on Xtensa LX6 @ 240MHz: ~120–180 cycles,1.0,0.0,100,100
+Task B (Swing-Up) - Nominal,Hybrid ES-LQR,-418.61,13.86,0.0,148.8594,7,7,Estimated cycle bounds on Xtensa LX6 @ 240MHz: ~200–280 cycles,1.0,0.0,100,100
+Task B (Swing-Up) - Nominal,TinyML-Neural,-25.7,95.07,94.0,4.2776,22,22,Estimated cycle bounds on Xtensa LX6 @ 240MHz: ~450–600 cycles including trig library,1.0,0.0,100,6
+Task A (Balancing) - Perturbed,Classical LQR,499.54,0.32,0.0,1.0324,4,4,Estimated cycle bounds on Xtensa LX6 @ 240MHz: ~120–180 cycles,1.3,0.05,100,100
+Task A (Balancing) - Perturbed,Hybrid ES-LQR,499.59,0.27,0.0,1.0579,7,7,Estimated cycle bounds on Xtensa LX6 @ 240MHz: ~200–280 cycles,1.3,0.05,100,100
+Task A (Balancing) - Perturbed,TinyML-Neural,481.67,82.25,4.0,3.3386,22,22,Estimated cycle bounds on Xtensa LX6 @ 240MHz: ~450–600 cycles including trig library,1.3,0.05,100,96
+Task B (Swing-Up) - Perturbed,Classical LQR,-463.94,60.32,25.0,169.3767,4,4,Estimated cycle bounds on Xtensa LX6 @ 240MHz: ~120–180 cycles,1.3,0.05,100,75
+Task B (Swing-Up) - Perturbed,Hybrid ES-LQR,-393.72,15.32,0.0,142.517,7,7,Estimated cycle bounds on Xtensa LX6 @ 240MHz: ~200–280 cycles,1.3,0.05,100,100
+Task B (Swing-Up) - Perturbed,TinyML-Neural,-72.07,24.75,100.0,nan,22,22,Estimated cycle bounds on Xtensa LX6 @ 240MHz: ~450–600 cycles including trig library,1.3,0.05,100,0

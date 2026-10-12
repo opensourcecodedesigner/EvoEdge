@@ -1,0 +1,324 @@
+{
+  "num_inputs": 5,
+  "num_outputs": 1,
+  "num_hidden": 14,
+  "num_active_connections": 12,
+  "nodes": [
+    {
+      "id": -1,
+      "type": "input",
+      "activation": null,
+      "bias": null,
+      "response": null
+    },
+    {
+      "id": -2,
+      "type": "input",
+      "activation": null,
+      "bias": null,
+      "response": null
+    },
+    {
+      "id": -3,
+      "type": "input",
+      "activation": null,
+      "bias": null,
+      "response": null
+    },
+    {
+      "id": -4,
+      "type": "input",
+      "activation": null,
+      "bias": null,
+      "response": null
+    },
+    {
+      "id": -5,
+      "type": "input",
+      "activation": null,
+      "bias": null,
+      "response": null
+    },
+    {
+      "id": 0,
+      "type": "output",
+      "activation": "tanh",
+      "bias": 0.115676,
+      "response": 1.0
+    },
+    {
+      "id": 170,
+      "type": "hidden",
+      "activation": "tanh",
+      "bias": 0.917733,
+      "response": 1.0
+    },
+    {
+      "id": 435,
+      "type": "hidden",
+      "activation": "tanh",
+      "bias": -0.277206,
+      "response": 1.0
+    },
+    {
+      "id": 462,
+      "type": "hidden",
+      "activation": "tanh",
+      "bias": -0.125826,
+      "response": 1.0
+    },
+    {
+      "id": 588,
+      "type": "hidden",
+      "activation": "tanh",
+      "bias": 1.441036,
+      "response": 1.0
+    },
+    {
+      "id": 675,
+      "type": "hidden",
+      "activation": "tanh",
+      "bias": -0.912277,
+      "response": 1.0
+    },
+    {
+      "id": 682,
+      "type": "hidden",
+      "activation": "tanh",
+      "bias": -1.349129,
+      "response": 1.0
+    },
+    {
+      "id": 857,
+      "type": "hidden",
+      "activation": "tanh",
+      "bias": 2.927685,
+      "response": 1.0
+    },
+    {
+      "id": 966,
+      "type": "hidden",
+      "activation": "tanh",
+      "bias": 2.06272,
+      "response": 1.0
+    },
+    {
+      "id": 983,
+      "type": "hidden",
+      "activation": "tanh",
+      "bias": 1.323508,
+      "response": 1.0
+    },
+    {
+      "id": 1136,
+      "type": "hidden",
+      "activation": "tanh",
+      "bias": 1.383245,
+      "response": 1.0
+    },
+    {
+      "id": 1330,
+      "type": "hidden",
+      "activation": "tanh",
+      "bias": 0.367214,
+      "response": 1.0
+    },
+    {
+      "id": 1435,
+      "type": "hidden",
+      "activation": "tanh",
+      "bias": 1.135618,
+      "response": 1.0
+    },
+    {
+      "id": 1708,
+      "type": "hidden",
+      "activation": "tanh",
+      "bias": 2.192076,
+      "response": 1.0
+    },
+    {
+      "id": 1808,
+      "type": "hidden",
+      "activation": "tanh",
+      "bias": 0.537264,
+      "response": 1.0
+    }
+  ],
+  "connections": [
+    {
+      "from": 682,
+      "to": 1136,
+      "weight": 1.52801,
+      "enabled": false
+    },
+    {
+      "from": 462,
+      "to": 435,
+      "weight": -2.159448,
+      "enabled": false
+    },
+    {
+      "from": -4,
+      "to": 588,
+      "weight": 1.541341,
+      "enabled": false
+    },
+    {
+      "from": -1,
+      "to": 983,
+      "weight": 0.728362,
+      "enabled": false
+    },
+    {
+      "from": -5,
+      "to": 435,
+      "weight": -1.771291,
+      "enabled": true
+    },
+    {
+      "from": 170,
+      "to": 0,
+      "weight": 4.106066,
+      "enabled": true
+    },
+    {
+      "from": 170,
+      "to": 1330,
+      "weight": 4.779573,
+      "enabled": false
+    },
+    {
+      "from": 1330,
+      "to": 966,
+      "weight": 0.09538,
+      "enabled": true
+    },
+    {
+      "from": 682,
+      "to": 983,
+      "weight": -1.030869,
+      "enabled": false
+    },
+    {
+      "from": 682,
+      "to": 857,
+      "weight": -0.384369,
+      "enabled": false
+    },
+    {
+      "from": 983,
+      "to": 857,
+      "weight": -2.549599,
+      "enabled": false
+    },
+    {
+      "from": 1136,
+      "to": 588,
+      "weight": -1.586778,
+      "enabled": true
+    },
+    {
+      "from": 462,
+      "to": 1330,
+      "weight": 0.599849,
+      "enabled": false
+    },
+    {
+      "from": -4,
+      "to": 462,
+      "weight": -0.527261,
+      "enabled": false
+    },
+    {
+      "from": 462,
+      "to": 170,
+      "weight": -0.253774,
+      "enabled": false
+    },
+    {
+      "from": -4,
+      "to": 675,
+      "weight": 0.068347,
+      "enabled": false
+    },
+    {
+      "from": 966,
+      "to": 1808,
+      "weight": -0.299247,
+      "enabled": true
+    },
+    {
+      "from": 1808,
+      "to": 857,
+      "weight": -0.741158,
+      "enabled": true
+    },
+    {
+      "from": -4,
+      "to": 682,
+      "weight": 3.437456,
+      "enabled": true
+    },
+    {
+      "from": 435,
+      "to": 0,
+      "weight": -0.953302,
+      "enabled": true
+    },
+    {
+      "from": 588,
+      "to": 966,
+      "weight": -0.53087,
+      "enabled": true
+    },
+    {
+      "from": 588,
+      "to": 675,
+      "weight": -0.086432,
+      "enabled": false
+    },
+    {
+      "from": 435,
+      "to": 588,
+      "weight": -1.144731,
+      "enabled": false
+    },
+    {
+      "from": -1,
+      "to": 170,
+      "weight": -5.155826,
+      "enabled": true
+    },
+    {
+      "from": 462,
+      "to": 966,
+      "weight": -0.959942,
+      "enabled": false
+    },
+    {
+      "from": 966,
+      "to": 857,
+      "weight": -1.619081,
+      "enabled": false
+    },
+    {
+      "from": 462,
+      "to": 1708,
+      "weight": 2.920273,
+      "enabled": true
+    },
+    {
+      "from": 1708,
+      "to": 1330,
+      "weight": -2.628982,
+      "enabled": false
+    },
+    {
+      "from": 983,
+      "to": 0,
+      "weight": -0.426275,
+      "enabled": true
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+mode,seed,scenario,mean_reward,baseline_reward,retention_pct
+balance,42,Baseline,-176.3671,-176.3671,0.0
+balance,42,Heavy Cart,-188.3909,-176.3671,0.0
+balance,42,Long Pole,-184.4463,-176.3671,0.0
+balance,42,Noisy Sensors,-187.9527,-176.3671,0.0
+complexity,42,Baseline,-8.0861,-8.0861,0.0
+complexity,42,Heavy Cart,-96.4469,-8.0861,0.0
+complexity,42,Long Pole,-100.823,-8.0861,0.0
+complexity,42,Noisy Sensors,6.2985,-8.0861,0.0
+hardware,42,Baseline,-5.9914,-5.9914,0.0
+hardware,42,Heavy Cart,-112.8938,-5.9914,0.0
+hardware,42,Long Pole,-53.279,-5.9914,0.0
+hardware,42,Noisy Sensors,-46.4545,-5.9914,0.0
+performance,42,Baseline,-14.8951,-14.8951,0.0
+performance,42,Heavy Cart,-30.5967,-14.8951,0.0
+performance,42,Long Pole,-42.0443,-14.8951,0.0
+performance,42,Noisy Sensors,0.5218,-14.8951,0.0
+swingup,42,Baseline,-8.0861,-8.0861,0.0
+swingup,42,Heavy Cart,-96.4469,-8.0861,0.0
+swingup,42,Long Pole,-100.823,-8.0861,0.0
+swingup,42,Noisy Sensors,6.2985,-8.0861,0.0
