@@ -1,0 +1,222 @@
+[
+  {
+    "arm": "Arm_A",
+    "in_dim": 5,
+    "mode": "nominal",
+    "optimizer_seed": 42,
+    "model_hash": "af4d873f3802e465",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 30.25,
+    "samples": 63013,
+    "pt_path": "results/replication_phase_2c\\models\\arm_a_seed42.pt"
+  },
+  {
+    "arm": "Arm_A",
+    "in_dim": 5,
+    "mode": "nominal",
+    "optimizer_seed": 43,
+    "model_hash": "66956cb53734c94d",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 25.367,
+    "samples": 50329,
+    "pt_path": "results/replication_phase_2c\\models\\arm_a_seed43.pt"
+  },
+  {
+    "arm": "Arm_A",
+    "in_dim": 5,
+    "mode": "nominal",
+    "optimizer_seed": 44,
+    "model_hash": "4016a621811a9049",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 27.422,
+    "samples": 58734,
+    "pt_path": "results/replication_phase_2c\\models\\arm_a_seed44.pt"
+  },
+  {
+    "arm": "Arm_A",
+    "in_dim": 5,
+    "mode": "nominal",
+    "optimizer_seed": 45,
+    "model_hash": "44aa04c99bcf3a65",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 23.825,
+    "samples": 52222,
+    "pt_path": "results/replication_phase_2c\\models\\arm_a_seed45.pt"
+  },
+  {
+    "arm": "Arm_A",
+    "in_dim": 5,
+    "mode": "nominal",
+    "optimizer_seed": 46,
+    "model_hash": "6dee0ccebaf18f6f",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 27.723,
+    "samples": 55900,
+    "pt_path": "results/replication_phase_2c\\models\\arm_a_seed46.pt"
+  },
+  {
+    "arm": "Arm_B",
+    "in_dim": 5,
+    "mode": "robust",
+    "optimizer_seed": 42,
+    "model_hash": "6487efa17c9b25ee",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 23.164,
+    "samples": 51327,
+    "pt_path": "results/replication_phase_2c\\models\\arm_b_seed42.pt"
+  },
+  {
+    "arm": "Arm_B",
+    "in_dim": 5,
+    "mode": "robust",
+    "optimizer_seed": 43,
+    "model_hash": "54daafb13964e9a7",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 23.508,
+    "samples": 48461,
+    "pt_path": "results/replication_phase_2c\\models\\arm_b_seed43.pt"
+  },
+  {
+    "arm": "Arm_B",
+    "in_dim": 5,
+    "mode": "robust",
+    "optimizer_seed": 44,
+    "model_hash": "7fcb30e3ef343091",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 23.17,
+    "samples": 51098,
+    "pt_path": "results/replication_phase_2c\\models\\arm_b_seed44.pt"
+  },
+  {
+    "arm": "Arm_B",
+    "in_dim": 5,
+    "mode": "robust",
+    "optimizer_seed": 45,
+    "model_hash": "91aaed2de2c793b4",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 29.522,
+    "samples": 60120,
+    "pt_path": "results/replication_phase_2c\\models\\arm_b_seed45.pt"
+  },
+  {
+    "arm": "Arm_B",
+    "in_dim": 5,
+    "mode": "robust",
+    "optimizer_seed": 46,
+    "model_hash": "cb0824fcd95af81d",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 24.445,
+    "samples": 50469,
+    "pt_path": "results/replication_phase_2c\\models\\arm_b_seed46.pt"
+  },
+  {
+    "arm": "Arm_C",
+    "in_dim": 6,
+    "mode": "nominal",
+    "optimizer_seed": 42,
+    "model_hash": "cdd187a6d87fabbe",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 29.652,
+    "samples": 60850,
+    "pt_path": "results/replication_phase_2c\\models\\arm_c_seed42.pt"
+  },
+  {
+    "arm": "Arm_C",
+    "in_dim": 6,
+    "mode": "nominal",
+    "optimizer_seed": 43,
+    "model_hash": "e4c9a9bb7a64ea15",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 26.382,
+    "samples": 53283,
+    "pt_path": "results/replication_phase_2c\\models\\arm_c_seed43.pt"
+  },
+  {
+    "arm": "Arm_C",
+    "in_dim": 6,
+    "mode": "nominal",
+    "optimizer_seed": 44,
+    "model_hash": "1bc76fb88e27f316",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 32.747,
+    "samples": 63744,
+    "pt_path": "results/replication_phase_2c\\models\\arm_c_seed44.pt"
+  },
+  {
+    "arm": "Arm_C",
+    "in_dim": 6,
+    "mode": "nominal",
+    "optimizer_seed": 45,
+    "model_hash": "cb771e571ac235f1",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 33.907,
+    "samples": 65026,
+    "pt_path": "results/replication_phase_2c\\models\\arm_c_seed45.pt"
+  },
+  {
+    "arm": "Arm_C",
+    "in_dim": 6,
+    "mode": "nominal",
+    "optimizer_seed": 46,
+    "model_hash": "317a0bfe150644f7",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 52.525,
+    "samples": 66646,
+    "pt_path": "results/replication_phase_2c\\models\\arm_c_seed46.pt"
+  },
+  {
+    "arm": "Arm_D",
+    "in_dim": 6,
+    "mode": "robust",
+    "optimizer_seed": 42,
+    "model_hash": "950d2880f0efc6d9",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 41.571,
+    "samples": 55849,
+    "pt_path": "results/replication_phase_2c\\models\\arm_d_seed42.pt"
+  },
+  {
+    "arm": "Arm_D",
+    "in_dim": 6,
+    "mode": "robust",
+    "optimizer_seed": 43,
+    "model_hash": "caa64000d564da86",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 42.291,
+    "samples": 55798,
+    "pt_path": "results/replication_phase_2c\\models\\arm_d_seed43.pt"
+  },
+  {
+    "arm": "Arm_D",
+    "in_dim": 6,
+    "mode": "robust",
+    "optimizer_seed": 44,
+    "model_hash": "4826895ae2d5b329",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 33.729,
+    "samples": 45495,
+    "pt_path": "results/replication_phase_2c\\models\\arm_d_seed44.pt"
+  },
+  {
+    "arm": "Arm_D",
+    "in_dim": 6,
+    "mode": "robust",
+    "optimizer_seed": 45,
+    "model_hash": "1915e31f891d783e",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 33.24,
+    "samples": 51143,
+    "pt_path": "results/replication_phase_2c\\models\\arm_d_seed45.pt"
+  },
+  {
+    "arm": "Arm_D",
+    "in_dim": 6,
+    "mode": "robust",
+    "optimizer_seed": 46,
+    "model_hash": "f25a5c5e8cdbb783",
+    "config_hash": "984053987fa92679",
+    "training_duration_s": 23.246,
+    "samples": 53418,
+    "pt_path": "results/replication_phase_2c\\models\\arm_d_seed46.pt"
+  }
+]
