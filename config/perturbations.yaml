@@ -1,8 +1,7 @@
 # ==============================================================================
-# EvoEdge Experimental Perturbation Distribution Specification (v2.3)
+# EvoEdge Experimental Perturbation Distribution Specification (v2.4)
 # ==============================================================================
-# Resolves experimental split leakage, separates prior diagnostic exposures,
-# and declares the genuinely held-out, unexposed final test suite.
+# Formalized for Phase 2B: Controlled Robustness Experiment.
 #
 # Scientific Objective Formal Declaration:
 #   OBJECTIVE B: Generalization beyond all previously explored physical ranges.
@@ -16,13 +15,13 @@
 #     - actuator_delay:   3 steps (60 ms) (historically exposed max: 2 steps / 40 ms)
 #
 # Partitions:
-#   - Training split:                      seeds 0..199
-#   - Validation split:                    seeds 200..399
+#   - Training split:                        seeds 0..199
+#   - Validation split:                      seeds 200..399
 #   - Historical Test split (Comparability): seeds 1000..1099
-#   - Supplementary Untouched Test split:   seeds 2000..2099
+#   - Supplementary Untouched Test split:    seeds 2000..2099 (strictly unexecuted)
 # ==============================================================================
 
-version: "2.3"
+version: "2.4"
 environment: "CartPoleSwingUpEnv"
 
 objective:
@@ -35,13 +34,13 @@ splits:
     purpose: "Controller optimization and training rollouts"
   validation:
     seed_range: [200, 399]
-    purpose: "Hyperparameter tuning, early stopping, and failure diagnosis"
+    purpose: "Hyperparameter tuning, model selection, and diagnostic hypothesis testing"
   test:
     seed_range: [1000, 1099]
     purpose: "Frozen historical benchmark evaluation for direct baseline comparability"
   supplementary_untouched_test:
     seed_range: [2000, 2099]
-    purpose: "Protocol Amendment v2.3: Pure untouched final test seeds reserved exclusively for final prospective reporting"
+    purpose: "Protocol Amendment v2.4: Pure untouched final test seeds reserved exclusively for final prospective reporting"
 
 perturbations:
   pole_mass:
@@ -50,18 +49,18 @@ perturbations:
     nominal_value: 0.10
     training:
       distribution: "uniform"
-      range: [0.08, 0.12]
-      description: "Nominal +/- 20% variation"
+      range: [0.08, 0.130]
+      description: "Nominal +/- 20% to historical max +30% variation"
     validation:
       distribution: "uniform"
-      range: [0.075, 0.125]
-      description: "Moderate +/- 25% variation (strictly excludes test benchmarks)"
+      range: [0.075, 0.130]
+      description: "Diagnostic validation range covering up to historical max 0.130 kg (excludes test benchmark 0.140 kg)"
     test:
       distribution: "fixed_and_uniform"
       benchmark_fixed: 0.140
       historical_exposed_fixed: 0.130
       range: [0.05, 0.16]
-      rationale: "+40% benchmark condition (0.140 kg) strictly exceeds training max 0.12, validation max 0.125, and historical exposure 0.130"
+      rationale: "+40% benchmark condition (0.140 kg) strictly exceeds training max 0.130, validation max 0.130, and historical exposure 0.130"
 
   cart_mass:
     variable_name: "MASS_CART"
@@ -69,18 +68,18 @@ perturbations:
     nominal_value: 1.00
     training:
       distribution: "uniform"
-      range: [0.85, 1.20]
-      description: "Nominal +20% / -15% variation"
+      range: [0.85, 1.30]
+      description: "Nominal to historical max +30% variation"
     validation:
       distribution: "uniform"
-      range: [0.80, 1.25]
-      description: "Moderate +25% / -20% variation (strictly excludes test benchmarks)"
+      range: [0.80, 1.30]
+      description: "Diagnostic validation range covering up to historical max 1.30 kg (excludes test benchmark 1.40 kg)"
     test:
       distribution: "fixed_and_uniform"
       benchmark_fixed: 1.40
       historical_exposed_fixed: 1.30
       range: [0.70, 1.50]
-      rationale: "+40% benchmark condition (1.40 kg) strictly exceeds training max 1.20, validation max 1.25, and historical exposure 1.30"
+      rationale: "+40% benchmark condition (1.40 kg) strictly exceeds training max 1.30, validation max 1.30, and historical exposure 1.30"
 
   cart_friction:
     variable_name: "b_cart"
@@ -88,17 +87,17 @@ perturbations:
     nominal_value: 0.00
     training:
       distribution: "uniform"
-      range: [0.00, 0.25]
-      description: "Light to moderate rail viscous drag"
+      range: [0.00, 0.50]
+      description: "Light to historical maximum rail viscous drag (0.00 to 0.50 N*s/m)"
     validation:
       distribution: "uniform"
-      range: [0.00, 0.35]
-      description: "Moderate drag (strictly excludes test benchmarks)"
+      range: [0.00, 0.50]
+      description: "Diagnostic validation drag covering up to historical max 0.50 N*s/m (excludes test benchmark 0.60 N*s/m)"
     test:
       distribution: "fixed"
       benchmark_fixed: 0.60
       historical_exposed_fixed: 0.50
-      rationale: "Extreme damping (0.60 N*s/m) strictly exceeds training max 0.25, validation max 0.35, and historical exposure 0.50"
+      rationale: "Extreme damping (0.60 N*s/m) strictly exceeds training max 0.50, validation max 0.50, and historical exposure 0.50"
 
   joint_friction:
     variable_name: "b_pole"
@@ -106,17 +105,17 @@ perturbations:
     nominal_value: 0.00
     training:
       distribution: "uniform"
-      range: [0.00, 0.005]
-      description: "Minimal rotational joint friction"
+      range: [0.00, 0.010]
+      description: "Rotational joint friction up to historical max 0.010 N*m*s/rad"
     validation:
       distribution: "uniform"
-      range: [0.00, 0.0075]
-      description: "Moderate rotational joint friction (strictly excludes test benchmarks)"
+      range: [0.00, 0.010]
+      description: "Diagnostic validation joint friction covering up to historical max 0.010 N*m*s/rad (excludes test benchmark 0.015 N*m*s/rad)"
     test:
       distribution: "fixed"
       benchmark_fixed: 0.015
       historical_exposed_fixed: 0.010
-      rationale: "Extreme joint friction (0.015 N*m*s/rad) strictly exceeds training max 0.005, validation max 0.0075, and historical exposure 0.010"
+      rationale: "Extreme joint friction (0.015 N*m*s/rad) strictly exceeds training max 0.010, validation max 0.010, and historical exposure 0.010"
 
   observation_noise:
     variable_name: "obs_noise_sigma"
@@ -140,17 +139,17 @@ perturbations:
         units: "rad/s"
     training:
       distribution: "uniform"
-      range: [0.00, 0.02]
-      description: "Low-amplitude sensor noise"
+      range: [0.00, 0.050]
+      description: "Sensor noise up to historical max sigma = 0.050"
     validation:
       distribution: "uniform"
-      range: [0.00, 0.035]
-      description: "Medium-amplitude sensor noise (strictly excludes test benchmarks)"
+      range: [0.00, 0.050]
+      description: "Diagnostic validation noise covering up to historical max sigma = 0.050 (excludes test benchmark 0.065)"
     test:
       distribution: "fixed"
       benchmark_fixed: 0.065
       historical_exposed_fixed: 0.050
-      rationale: "Stress noise sigma = 0.065 strictly exceeds training max 0.02, validation max 0.035, and historical exposure 0.050"
+      rationale: "Stress noise sigma = 0.065 strictly exceeds training max 0.050, validation max 0.050, and historical exposure 0.050"
 
   actuator_delay:
     variable_name: "delay_steps"
@@ -158,17 +157,17 @@ perturbations:
     nominal_value: 0
     training:
       distribution: "discrete"
-      values: [0]
-      description: "Zero-latency ideal actuation during nominal training"
+      values: [0, 1, 2]
+      description: "Actuation latency covering nominal (0) and historical delays (1, 2 steps / 20, 40 ms)"
     validation:
       distribution: "discrete"
-      values: [0]
-      description: "Zero-latency validation during nominal model selection"
+      values: [0, 1, 2]
+      description: "Diagnostic validation latency covering nominal (0) and historical delays (1, 2 steps / 20, 40 ms)"
     test:
       distribution: "discrete"
       values: [3]
       historical_exposed_values: [1, 2]
-      rationale: "3-step (60 ms) delay is genuinely unexposed, strictly exceeding training/validation latency [0] and historical delays [1, 2]"
+      rationale: "3-step (60 ms) delay is genuinely unexposed, strictly exceeding training/validation latency [0, 1, 2]"
 
 # ── Prior Exposure & Unexposed Final Test Suites ──────────────────────────────
 exposure_catalog:

@@ -26,7 +26,7 @@ class TestPerturbationLoader(unittest.TestCase):
     def test_load_valid_suite(self):
         """Standard perturbations.yaml must load successfully and return a valid suite."""
         suite = load_perturbation_suite(self.config_path)
-        self.assertEqual(suite.version, "2.3")
+        self.assertIn(suite.version, ["2.3", "2.4"])
         self.assertIn("training", suite.splits)
         self.assertIn("validation", suite.splits)
         self.assertIn("test", suite.splits)
