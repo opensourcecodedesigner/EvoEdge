@@ -853,3 +853,204 @@ The actual maximum absolute discrepancy between the Python model and the exporte
 | `experiments/benchmark_suite.py` | 21, 328, 470, 481, 497, 716, 718, 807 | Various instances of Xtensa cycle bounds (~120–180, ~200–280, ~450–600) | **NO** | Analytical cycle bound estimate |
 
 **Plain Statement:** **Zero hardware measurements were performed on physical ESP32 or Xtensa silicon.** All execution times and cycle ranges are analytical approximations based on operation counts and instruction cycle estimates.
+
+---
+
+# Phase 2: Systematic Fixes, Empirical Verification & Validation
+
+This section documents the execution and empirical verification of Fixes 1 through 5, following all established rules, constraints, and gating conditions.
+
+---
+
+## Fix 1: Teacher Controller Correction & Energy Pumping Law
+
+### Description of Changes
+1. **Teacher Gains & Kinetic Parameter:**
+   - Updated gains in both `baselines/hybrid_controller.py`, `results/controller.h`, and `results/controller.c`:
+     $$k_E = 0.6, \quad k_x = 0.5, \quad k_v = 0.25$$
+   - Corrected the kinetic energy coefficient from $0.5 \cdot m \cdot L^2 = 0.0125$ to:
+     $$c_{\text{kin}} = \frac{2}{3} m L^2 = \frac{2}{3} \cdot 0.1 \cdot 0.5^2 = 0.016667\text{ J}\cdot\text{s}^2$$
+2. **Pumping Law Mechanics:**
+   - Corrected energy-shaping pumping law to sign energy-shaping:
+     $$u = k_E \cdot \operatorname{sign}(E - E_0) \cdot \operatorname{sign}(\dot{\theta} \cos\theta) - k_x x - k_v \dot{x}$$
+   - This ensures full pumping amplitude is maintained until capture, eliminating the previous stall at $E \approx -0.088\text{ J}$.
+3. **True Continuous LQR Derivation:**
+   - Linearized upright CartPole system and computed the infinite-horizon continuous-time Riccati solution via `scipy.linalg.solve_continuous_are` with $Q = \operatorname{diag}(1.0, 0.1, 10.0, 0.1)$ and $R = 1.0$ (in force units, where force = action $\times$ 10):
+     $$K_{\text{true}} = [-1.0000, -1.2138, -7.8073, -1.8677]$$
+   - Renamed existing hand-tuned gains to "linear feedback (hand-tuned)" and the hybrid controller to "energy-shaping + linear feedback".
+4. **Unit Tests Added (`test_baselines.py`):**
+   - `test_true_lqr_computation`: Validates Riccati solution matches theoretical values within $10^{-4}$.
+   - `test_pumping_sign`: Verifies correct injection force direction when hanging with positive/negative velocities.
+   - `test_energy_increasing_during_pumping`: Confirms total mechanical energy strictly increases by $>0.3\text{ J}$ during swing-up.
+   - `test_swingup_gate_100_percent`: Evaluates swing-up across seeds 1000–1099.
+
+### Before vs. After Comparison (Fix 1)
+| Metric / Component | Before Fix 1 | After Fix 1 |
+|---|---|---|
+| Energy Pumping Law | $k_E(E-E_0)\operatorname{sign}(\dot{\theta}\cos\theta) - 1.2x - 0.8\dot{x}$ | $0.6\operatorname{sign}(E-E_0)\operatorname{sign}(\dot{\theta}\cos\theta) - 0.5x - 0.25\dot{x}$ |
+| Kinetic Energy Coeff | $0.0125$ | $0.016667$ ($(2/3)mL^2$) |
+| Python Swing-Up Success (1000..1099) | **0.0% (0/100)** | **100.0% (100/100)** |
+| Compiled C Swing-Up Success (1000..1099) | **0.0% (0/100)** | **100.0% (100/100)** |
+| Rail Collision Rate (1000..1099) | **0.0%** (Stalled hanging) | **0.0%** |
+| Median Steps to Upright | $\text{N/A}$ | **88.0 steps (1.76 s)** |
+| GATE STATUS | **FAIL** | **PASS (100% Success)** |
+
+- **Commit Hash:** `83a8f9c` (*fix(teacher): update energy pumping gains k_E=0.6, k_x=0.5, k_v=0.25, correct kinetic coeff, and add true LQR*)
+
+---
+
+## Fix 2: TinyML Evolution & Architectural Sweep
+
+### Description of Changes
+1. **Explicit Episode Seeding & Penalty:**
+   - Switched from global RNG seeding to per-episode seeded generators via `np.random.default_rng(seed)`.
+   - On boundary exit ($|x| > 2.4$), added rail penalty:
+     $$R_{\text{penalty}} = -1.0 \times \text{steps\_left}$$
+     ensuring early termination is strictly worse than hanging throughout the episode.
+2. **Disjoint Seed Protocol:**
+   - Training seeds: strictly constrained to `0..199`.
+   - Evaluation seeds: strictly frozen to `1000..1099` (zero seed overlap).
+3. **Training & Architecture Sweep:**
+   - Implemented closed-loop DAgger with the corrected teacher across training seeds `0..199` with 500-step episodes.
+   - Evaluated hidden layer dimensions $H \in \{3, 6, 8\}$:
+     - **$H=3$ (22 params, 22 MACs):** 68% success, 0% rail collisions, median steps = 93.5.
+     - **$H=6$ (43 params, 43 MACs):** 93% success, 0% rail collisions, median steps = 88.0.
+     - **$H=8$ (57 params, 57 MACs):** **100% success (100/100)**, 0% rail collisions, median steps = 87.0.
+   - Smallest model passing the 100% success gate: **$H=8$**.
+   - Saved artifacts:
+     - `results/champion_neural_h3.pkl`
+     - `results/champion_neural_h6.pkl`
+     - `results/champion_neural_h8.pkl`
+     - `results/champion_neural_genome.pkl`
+     - `results/neural_controller.h` (clean C header with zero heap allocation, 57 MACs).
+
+### Before vs. After Comparison (Fix 2)
+| Metric / Component | Before Fix 2 (5-3-1 Net) | After Fix 2 ($H=8$ TinyML Net) |
+|---|---|---|
+| Training Start State | Near-upright ($\theta_0 \approx 0$) | Hanging downward ($\theta_0 \approx \pi$) |
+| Rail Termination Penalty | 0.0 (Truncated return) | $-1.0 \times \text{steps\_left}$ |
+| Seed Partitioning | Global seed leakage | Strictly disjoint (Train 0..199 vs Eval 1000..1099) |
+| Task B Swing-Up Success (1000..1099) | **0.0% (0/100)** | **100.0% (100/100)** |
+| Rail Collision Rate (1000..1099) | **100.0% (100/100)** | **0.0% (0/100)** |
+| Median Steps to Upright | $\text{N/A}$ | **87.0 steps (1.74 s)** |
+| GATE STATUS | **FAIL** | **PASS (100% Success)** |
+
+- **Commit Hash:** `b4df49e` (*fix(evolution): train tiny neural controllers with explicit seeds, disjoint split, and save H=3/6/8 champions*)
+
+---
+
+## Fix 3: Comprehensive Perturbation Suite & Task B Benchmark
+
+### Description of Changes
+1. **Task B Added to Benchmark Suite:**
+   - Incorporated full swing-up (Task B, hanging initial state $\theta_0 = \pi \pm 0.2\text{ rad}$) into the frozen benchmark suite.
+2. **Individual & Combined Perturbations:**
+   - **Pole Mass $+30\%$:** $m_p = 0.13\text{ kg}$ (nominal $0.10\text{ kg}$).
+   - **Cart Mass $+30\%$:** $m_c = 1.30\text{ kg}$ (nominal $1.00\text{ kg}$).
+   - **Friction:** Cart rail friction $b_c = 0.5\text{ N}\cdot\text{s/m}$ and pole joint viscous friction $b_p = 0.01\text{ N}\cdot\text{m}\cdot\text{s/rad}$.
+   - **Sensor Noise:** Zero-mean Gaussian noise $\sigma = 0.05$ injected into all 5 observation channels ($x, \dot{x}, \cos\theta, \sin\theta, \dot{\theta}$).
+   - **Actuator Delay:** 1-step ($20\text{ ms}$) and 2-step ($40\text{ ms}$) FIFO actuation queues.
+   - **Combined Condition:** Pole mass $+30\%$, cart mass $+30\%$, friction ($b_c=0.5, b_p=0.01$), sensor noise ($\sigma=0.05$), and 1-step actuator delay ($20\text{ ms}$).
+3. **Statistical Reporting:**
+   - Reported success rates with exact **95% Wilson score confidence intervals** and rail collision percentages across all controllers.
+
+### Benchmark Suite Evaluation Matrix (Seeds 1000..1099)
+| Controller | Condition | Success Rate | 95% Wilson Confidence Interval | Rail Collision (%) |
+|---|---|---|---|---|
+| **Classical LQR** | Nominal Task B | 0% (0/100) | [0.0%, 3.7%] | 0% |
+| **Classical LQR** | Pole Mass +30% | 0% (0/100) | [0.0%, 3.7%] | 0% |
+| **Classical LQR** | Cart Mass +30% | 0% (0/100) | [0.0%, 3.7%] | 0% |
+| **Classical LQR** | Friction | 0% (0/100) | [0.0%, 3.7%] | 0% |
+| **Classical LQR** | Sensor Noise | 0% (0/100) | [0.0%, 3.7%] | 27% |
+| **Classical LQR** | 1-Step Delay | 0% (0/100) | [0.0%, 3.7%] | 100% |
+| **Classical LQR** | 2-Step Delay | 0% (0/100) | [0.0%, 3.7%] | 100% |
+| **Classical LQR** | Combined | 0% (0/100) | [0.0%, 3.7%] | 17% |
+| **Energy-Shaping + Linear Feedback** | Nominal Task B | 100% (100/100) | [96.3%, 100.0%] | 0% |
+| **Energy-Shaping + Linear Feedback** | Pole Mass +30% | 100% (100/100) | [96.3%, 100.0%] | 0% |
+| **Energy-Shaping + Linear Feedback** | Cart Mass +30% | 100% (100/100) | [96.3%, 100.0%] | 0% |
+| **Energy-Shaping + Linear Feedback** | Friction | 85% (85/100) | [76.7%, 90.7%] | 8% |
+| **Energy-Shaping + Linear Feedback** | Sensor Noise | 95% (95/100) | [88.8%, 97.8%] | 2% |
+| **Energy-Shaping + Linear Feedback** | 1-Step Delay | 99% (99/100) | [94.6%, 99.8%] | 1% |
+| **Energy-Shaping + Linear Feedback** | 2-Step Delay | 100% (100/100) | [96.3%, 100.0%] | 0% |
+| **Energy-Shaping + Linear Feedback** | Combined | 48% (48/100) | [38.5%, 57.7%] | 28% |
+| **TinyML Neural (H=8)** | Nominal Task B | 100% (100/100) | [96.3%, 100.0%] | 0% |
+| **TinyML Neural (H=8)** | Pole Mass +30% | 100% (100/100) | [96.3%, 100.0%] | 0% |
+| **TinyML Neural (H=8)** | Cart Mass +30% | 98% (98/100) | [93.0%, 99.4%] | 2% |
+| **TinyML Neural (H=8)** | Friction | 0% (0/100) | [0.0%, 3.7%] | 0% |
+| **TinyML Neural (H=8)** | Sensor Noise | 97% (97/100) | [91.5%, 99.0%] | 0% |
+| **TinyML Neural (H=8)** | 1-Step Delay | 0% (0/100) | [0.0%, 3.7%] | 100% |
+| **TinyML Neural (H=8)** | 2-Step Delay | 1% (1/100) | [0.2%, 5.4%] | 99% |
+| **TinyML Neural (H=8)** | Combined | 3% (3/100) | [1.0%, 8.5%] | 0% |
+| **MLP 64x64 (Dense)** | Nominal Task B | 100% (100/100) | [96.3%, 100.0%] | 0% |
+| **MLP 64x64 (Dense)** | Pole Mass +30% | 84% (84/100) | [75.6%, 89.9%] | 16% |
+| **MLP 64x64 (Dense)** | Cart Mass +30% | 96% (96/100) | [90.2%, 98.4%] | 4% |
+| **MLP 64x64 (Dense)** | Friction | 0% (0/100) | [0.0%, 3.7%] | 35% |
+| **MLP 64x64 (Dense)** | Sensor Noise | 95% (95/100) | [88.8%, 97.8%] | 2% |
+| **MLP 64x64 (Dense)** | 1-Step Delay | 100% (100/100) | [96.3%, 100.0%] | 0% |
+| **MLP 64x64 (Dense)** | 2-Step Delay | 14% (14/100) | [8.5%, 22.1%] | 86% |
+| **MLP 64x64 (Dense)** | Combined | 34% (34/100) | [25.5%, 43.7%] | 51% |
+
+---
+
+## Fix 4: Removal of Unsupported Claims & Closed-Loop C Verification
+
+### Description of Changes
+1. **Unsubstantiated Latency Claims Removed:**
+   - Deleted `~0.85 us on ESP32` from `results/neural_controller.h`.
+   - Labeled all cycle numbers as **THEORETICAL ESTIMATES** across reports, code headers, and documentation.
+2. **Action Discrepancy Clarification:**
+   - Replaced "parity to 8 decimal places" with the empirical measured bound:
+     $$\max |\Delta u| = 1.43 \times 10^{-5}$$
+     over 10,000 real rollout observations.
+3. **Architecture Classification:**
+   - Explicitly clarified in headers and documentation: **"weights evolved, topology fixed"** for the 5-H-1 neural models.
+4. **Closed-Loop C Controller Integration Test:**
+   - Added `test_closed_loop_compiled_c_neural` in `test_baselines.py`.
+   - Compiles `results/neural_controller.h` via GCC into a dynamic library and runs the C controller in closed-loop Gymnasium simulation over seeds 1000..1099 via `ctypes`.
+   - **Result:** **100/100 (100.0%) closed-loop swing-up success** matching the Python model.
+
+- **Commit Hash:** `cc4ced3` (*fix(docs): clarify theoretical estimates, update error bounds, and add closed-loop C test*)
+
+---
+
+## Fix 5: 64x64 MLP Baseline, Magnitude Pruning & Pareto Analysis
+
+### Description of Changes
+1. **64x64 MLP Training:**
+   - Architecture: $[5 \to 64(\text{tanh}) \to 64(\text{tanh}) \to 1(\text{tanh})]$, comprising 4,609 parameters and 9,089 estimated operations.
+   - Trained under identical evaluation budget and closed-loop DAgger protocol on disjoint training seeds `0..199`.
+   - Evaluated on Task B seeds `1000..1099`: **100/100 (100.0%) success**, 0% rail hits.
+2. **Magnitude Pruning (Prune-Only vs. Prune + Fine-Tune):**
+   - Evaluated at 50%, 75%, and 90% parameter sparsity.
+   - Fine-tuned with gradient masking over 15 epochs per pruning ratio.
+3. **Trade-Off & Pareto Frontier Analysis:**
+   - Saved visual plot to `results/pareto_frontier.png` comparing swing-up success against parameter count and estimated compute ops.
+   - Identified non-dominated Pareto-optimal set.
+
+### Baselines & Pruned Variants Summary (Seeds 1000..1099)
+| Model Variant | Parameters | Compute Ops | Nominal Task B Success | Status on Pareto Frontier |
+|---|---|---|---|---|
+| **TinyML (H=3)** | 22 | 48 | 68% (68/100) | **Pareto-Optimal (Lowest Compute)** |
+| **TinyML (H=6)** | 43 | 93 | 93% (93/100) | **Pareto-Optimal (Intermediate Cost)** |
+| **TinyML (H=8)** | 57 | 123 | **100% (100/100)** | **Pareto-Optimal (Smallest 100% Model)** |
+| **MLP 64x64 (Dense)** | 4,609 | 9,089 | **100% (100/100)** | Dominated by TinyML H=8 (80x parameters) |
+| **MLP 64x64 (50% Pruned)** | 2,369 | 4,609 | 1% (1/100) | Dominated |
+| **MLP 64x64 (50% Pruned + FT)** | 2,369 | 4,609 | 4% (4/100) | Dominated |
+| **MLP 64x64 (75% Pruned)** | 1,249 | 2,369 | 0% (0/100) | Dominated |
+| **MLP 64x64 (75% Pruned + FT)** | 1,249 | 2,369 | 0% (0/100) | Dominated |
+| **MLP 64x64 (90% Pruned)** | 577 | 1,025 | 0% (0/100) | Dominated |
+| **MLP 64x64 (90% Pruned + FT)** | 577 | 1,025 | 0% (0/100) | Dominated |
+
+- **Commit Hash:** `74f03ea` (*fix(baselines): train 64x64 MLP, evaluate pruned variants, and plot Pareto frontier*)
+
+---
+
+## Limitations, Theoretical Estimations & Physical Boundaries
+
+1. **What Could NOT Be Done:**
+   - Physical deployment and execution on physical ESP32 hardware was impossible because no physical board or USB serial hardware interface was connected in the local host environment.
+   - Arbitrary unstructured network topology search via `neat-python` did not solve Task B within 100 generations from a hanging start; closed-loop student-teacher optimization with fixed layered topology was required.
+2. **What is Estimated Rather Than Measured:**
+   - All microcontroller cycle counts (e.g. 120–180 cycles for LQR, 200–280 cycles for Hybrid ES-LQR, 450–600 cycles for TinyML) and execution durations ($\sim 0.85\,\mu\text{s}$) are **theoretical instruction cycle estimates** derived from operation counts and processor frequency (240 MHz Xtensa LX6). None have been benchmarked with hardware timers or logic analyzers on real silicon.
+   - Operations (Ops) are calculated as $2 \times \text{MACs} + \text{Activations}$.
+
