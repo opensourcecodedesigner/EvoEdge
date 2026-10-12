@@ -372,7 +372,50 @@ class TestEnergyShapingLinearFeedbackController(unittest.TestCase):
             f"Fix 1 GATE failed: expected 100% success (100/{total_seeds}), got {successes}/{total_seeds}",
         )
 
+    def test_closed_loop_compiled_c_neural(self):
+        """Fix 4: Run compiled C neural controller via ctypes in closed-loop simulation."""
+        import ctypes
+        import subprocess
+        from env.cartpole_swingup import CartPoleSwingUpEnv
+
+        c_bridge_src = os.path.join(_PROJECT_ROOT, "scratch", "c_neural_bridge.c")
+        dll_path = os.path.join(_PROJECT_ROOT, "scratch", "c_neural_bridge.dll")
+        if not os.path.exists(dll_path):
+            subprocess.run(["gcc", "-O3", "-shared", "-o", dll_path, c_bridge_src, f"-I{_PROJECT_ROOT}"], check=True)
+
+        dll = ctypes.CDLL(os.path.abspath(dll_path))
+        dll.c_act.argtypes = [ctypes.POINTER(ctypes.c_float)]
+        dll.c_act.restype = ctypes.c_float
+
+        successes = 0
+        total_seeds = 100
+        for s in range(1000, 1000 + total_seeds):
+            env = CartPoleSwingUpEnv(max_steps=500, continuous=True)
+            obs, _ = env.reset(seed=s)
+            cos_thetas = []
+            rail_hit = False
+
+            for _ in range(500):
+                obs_c = (ctypes.c_float * 5)(*obs.astype(np.float32))
+                a = float(dll.c_act(obs_c))
+                obs, _, term, trunc, _ = env.step(a)
+                cos_thetas.append(obs[2])
+                if term:
+                    rail_hit = True
+                    break
+
+            if not rail_hit and len(cos_thetas) == 500:
+                if sum(1 for c in cos_thetas[-100:] if c > 0.9) >= 95:
+                    successes += 1
+
+        self.assertEqual(
+            successes,
+            total_seeds,
+            f"Compiled C neural controller closed-loop test failed: got {successes}/{total_seeds}",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
