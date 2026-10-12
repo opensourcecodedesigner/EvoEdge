@@ -86,6 +86,19 @@ def validate_split_integrity(config_path: str = "config/perturbations.yaml") -> 
     if vt:
         raise SplitIntegrityError(f"Integrity Violation: Validation and Test seeds overlap on {sorted(list(vt))[:5]}...")
 
+    # Optional supplementary untouched test partition check (Protocol Amendment v2.2)
+    if "supplementary_untouched_test" in splits:
+        supp_spec = splits["supplementary_untouched_test"]
+        if "seed_range" in supp_spec and len(supp_spec["seed_range"]) == 2:
+            s_start, s_end = supp_spec["seed_range"]
+            if s_start > s_end:
+                raise SplitIntegrityError("Invalid supplementary seed range: start must be <= end.")
+            supp_set = set(range(s_start, s_end + 1))
+            for other_name, other_set in [("Training", train_set), ("Validation", val_set), ("Test", test_set)]:
+                overlap = supp_set.intersection(other_set)
+                if overlap:
+                    raise SplitIntegrityError(f"Integrity Violation: Supplementary Untouched Test overlaps with {other_name} on {sorted(list(overlap))[:5]}...")
+
     # 2. Validate physical variables and OOD benchmark conditions
     if "perturbations" not in cfg:
         raise SplitIntegrityError("Missing 'perturbations' section in configuration.")

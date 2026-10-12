@@ -1,21 +1,20 @@
-# Phase 1 Correction Log: Final Closure Gate
+# Phase 1 Correction Log: Final Protocol Clarification
 
 **Date:** October 12, 2026  
 **Auditor:** Lead Research Engineer  
-**Scope:** Phase 1 Final Closure Gate — Exposure Audit, Operation Accounting, Causal Grounding, and Config Interface  
-**Commit Baseline:** `2ceacc9`  
+**Scope:** Phase 1 Final Protocol Clarification — Seed-Exposure Disambiguation, Metric Terminology Correction, and Friction Hypothesis Reclassification  
+**Commit Baseline:** `3bfeb03`  
 
 ---
 
-## 1. Summary of Changes & Rationale
+## 1. Summary of Protocol Corrections & Amendments
 
 | Area / Task | What Changed | Rationale / Problem Corrected |
 |---|---|---|
-| **Task A: Perturbation Exposure Ledger** | Created `results/perturbation_exposure_ledger.csv`. Cataloged all 16 historical handoff conditions, 4 Phase 1 diagnostic conditions, and defined 6 genuinely unexposed final test conditions. Updated `config/perturbations.yaml` to v2.1. | Prevents declaring previously evaluated conditions (e.g. cart mass 1.30, delay 1-2 steps) as unseen OOD final tests. Formally distinguishes prior diagnostic exposure from future held-out evaluation. |
-| **Task B: Operation Accounting** | Created `metrics/ops_counter.py` and automated test suite `tests/test_ops_accounting.py`. Audited layer dimensions and counts against conventional dense implementations: 48 weight MACs / 57 params for $H=8$; 4,480 weight MACs / 4,609 params for $64\times 64$ MLP. Verified bias additions (9 vs 129) and activation evaluations (9 vs 129) separately. | Eliminates ambiguity in parameter and MAC metrics. Replaces ad-hoc proxy counters with standard deep learning arithmetic definitions while preserving exact tracking. |
-| **Task C: Causal Claims Audit** | Attached exact paths to episode-level trajectory and summary logs in `results/diagnostics/`. Qualified claims regarding delay phase lag and limit cycles; removed speculative claims of fixed $\pi/2$ phase shift and unverified bifurcation proofs. Grounded friction failure in energy starvation backed by empirical $\cos\theta \le 0.4135$ bounds. | Distinguishes measured empirical observations from theoretical hypotheses. Ensures all scientific statements are defensible from saved data. |
-| **Task D: Unified Perturbation Interface** | Implemented `utils/perturbation_loader.py` with schema validation, split seed verification, and episode parameter logging. Added unit test suite `tests/test_perturbation_loader.py`. Registered unmigrated runners (`experiments/benchmark_suite.py`, `runner.py`, `run_baselines_pruning.py`, `evolve_tinyml.py`). | Establishes a safe, unified configuration-loading interface for future experiments while preventing silent failures from unmigrated legacy runners. |
-| **Task E: Reporting and Remaining Gaps** | Updated `results/phase_1_report.md` with an operations table, exposure ledger summary, causal qualifications, and an explicit "Remaining NOT VERIFIED Items" section. | Delivers full transparency before Phase 2. Prevents overclaiming completeness on items requiring physical hardware or future execution. |
+| **Protocol 1: Seed-Exposure Disambiguation** | Updated `results/perturbation_exposure_ledger.csv` to explicitly distinguish individual seed IDs from evaluated seed-condition combinations. Added a dedicated `evaluated_seed_condition_combinations` column. Declared a supplementary untouched final test seed range `2000..2099` in `config/perturbations.yaml` v2.2. Updated `utils/split_integrity.py` to enforce disjointness for this partition. | Resolves any potential ambiguity regarding whether seed IDs `1000..1099` were tainted by prior exposure under historical conditions. Establishes a pure untouched seed reserve (`2000..2099`) guaranteed never exposed to any model selection, training, or runner. |
+| **Protocol 2: Metric Terminology Correction** | Updated `metrics/ops_counter.py`, `tests/test_ops_accounting.py`, and `results/phase_1_report.md`. Formally retained verified dense MAC counts (48 weight MACs / 57 params for $H=8$; 4,480 weight MACs / 4,609 params for $64\times 64$ MLP). Relabeled the composite metric `2 * MACs + bias additions + activation evaluations` as an **operation-count proxy**, explicitly stating it is NOT a standard FLOP count. | Standard deep learning and embedded computing conventions define MACs as multiply-accumulate operations and report Weight MACs and Parameter counts. Prevents confusing an ad-hoc proxy formula with standard FLOP metrics. |
+| **Protocol 3: Causal Reclassification of Friction Mechanism** | Reclassified the energy starvation explanation for friction failure in `results/phase_1_report.md` from a proven causal mechanism to a **supported hypothesis**. Added exact mechanical energy balance ($\Delta E_{\text{mech}} = \int F dx - \int P_{\text{loss}} dt$) to the "Remaining NOT VERIFIED Items" list. | Preserves empirical observations ($\cos\theta \le 0.4135$, 0% rail collisions, 0% success) while maintaining scientific rigor, acknowledging that continuous numerical energy balance integration was not computed in Phase 1. |
+| **Protocol 4: Runner & Test Suite Integrity** | Ran all 35 unit tests across the test suite. All tests pass with zero errors. Updated tests in `tests/test_ops_accounting.py` and `tests/test_perturbation_loader.py` to validate `operation_count_proxy` and YAML v2.2. | Ensures zero regression across split integrity, baselines, operation accounting, and perturbation loading interfaces. |
 
 ---
 
@@ -24,21 +23,14 @@
 All automated tests executed locally on Python 3.12:
 
 ```powershell
-# 1. Baseline Test Suite (19 tests)
-python -m unittest test_baselines.py
-# Ran 19 tests in 1.656s - OK
+python -m unittest test_baselines.py tests/test_split_integrity.py tests/test_ops_accounting.py tests/test_perturbation_loader.py
+```
+```
+...................................
+----------------------------------------------------------------------
+Ran 35 tests in 2.768s
 
-# 2. Split Integrity Suite (6 tests)
-python -m unittest tests/test_split_integrity.py
-# Ran 6 tests in 0.223s - OK
-
-# 3. Operation Accounting Suite (5 tests)
-python -m unittest tests/test_ops_accounting.py
-# Ran 5 tests in 0.002s - OK
-
-# 4. Perturbation Configuration Loader Suite (5 tests)
-python -m unittest tests/test_perturbation_loader.py
-# Ran 5 tests in 0.087s - OK
+OK
 ```
 
 Total tests passing: **35 / 35 (100%)**.
@@ -47,8 +39,8 @@ Total tests passing: **35 / 35 (100%)**.
 
 ## 3. Explicit Gate Status Summary
 
-- **Task A (Exposure Audit):** Complete (`results/perturbation_exposure_ledger.csv`, `config/perturbations.yaml` v2.1).
-- **Task B (Operation Accounting):** Complete (`metrics/ops_counter.py`, `tests/test_ops_accounting.py`).
-- **Task C (Causal Claims Audit):** Complete (grounded in `results/diagnostics/*.csv`, qualified in `results/phase_1_report.md`).
-- **Task D (Perturbation Loader):** Complete (`utils/perturbation_loader.py`, `tests/test_perturbation_loader.py`, unmigrated registry documented).
-- **Task E (Evidence Update & Stop):** Complete. Controller optimization and Phase 2 training held strictly frozen awaiting user authorization.
+- **Seed-Exposure Disambiguation:** Complete (`results/perturbation_exposure_ledger.csv`, `config/perturbations.yaml` v2.2, supplementary untouched seeds `2000..2099` declared and reserved).
+- **Metric Terminology:** Complete (`metrics/ops_counter.py`, `tests/test_ops_accounting.py`, labeled as operation-count proxy).
+- **Causal Claims & Hypotheses:** Complete (friction reclassified as supported hypothesis; energy balance tracked as NOT VERIFIED).
+- **Test Integrity:** Complete (35/35 passing unit tests).
+- **Execution Boundary:** Frozen at Phase 1. No controller training, robust optimization, or final OOD suite evaluation performed.

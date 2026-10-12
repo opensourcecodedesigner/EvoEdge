@@ -27,8 +27,8 @@ class TestOpsAccounting(unittest.TestCase):
         self.assertEqual(ops["total_parameters"], 57)
         self.assertEqual(ops["bias_additions"], 9)
         self.assertEqual(ops["activation_evals"], 9)
-        # FLOPs = 2 * 48 + 9 + 9 = 114
-        self.assertEqual(ops["total_flops"], 114)
+        # Operation-count proxy = 2 * 48 + 9 + 9 = 114
+        self.assertEqual(ops["operation_count_proxy"], 114)
 
     def test_mlp64_theoretical_accounting(self):
         """Standard 5->64->64->1 network must have 4,480 weight MACs, 4,609 params."""
@@ -41,18 +41,20 @@ class TestOpsAccounting(unittest.TestCase):
         self.assertEqual(ops["total_parameters"], 4609)
         self.assertEqual(ops["bias_additions"], 129)
         self.assertEqual(ops["activation_evals"], 129)
-        # FLOPs = 2 * 4480 + 129 + 129 = 9218
-        self.assertEqual(ops["total_flops"], 9218)
+        # Operation-count proxy = 2 * 4480 + 129 + 129 = 9218
+        self.assertEqual(ops["operation_count_proxy"], 9218)
 
     def test_h3_and_h6_accounting(self):
         """Verify H=3 (22 params, 18 MACs) and H=6 (43 params, 36 MACs)."""
         ops_h3 = compute_feedforward_ops([5, 3, 1])
         self.assertEqual(ops_h3["weight_macs"], 18)
         self.assertEqual(ops_h3["total_parameters"], 22)
+        self.assertEqual(ops_h3["operation_count_proxy"], 44)
 
         ops_h6 = compute_feedforward_ops([5, 6, 1])
         self.assertEqual(ops_h6["weight_macs"], 36)
         self.assertEqual(ops_h6["total_parameters"], 43)
+        self.assertEqual(ops_h6["operation_count_proxy"], 86)
 
     def test_champion_h8_artifact_audit(self):
         """Audit the actual saved champion_neural_h8.pkl file."""

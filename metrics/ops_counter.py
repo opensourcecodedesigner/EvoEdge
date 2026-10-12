@@ -1,31 +1,33 @@
 """Mathematical Operation and Parameter Accounting for Neural Controllers.
 
 Provides rigorous, unambiguous accounting of parameters, standard Multiply-Accumulate
-(weight MAC) operations, bias additions, activation function evaluations, and total FLOPs
-for dense feedforward controllers (e.g. TinyML 5->H->1 and Deep MLP 5->64->64->1).
+(weight MAC) operations, bias additions, activation function evaluations, and operation-count
+proxies for dense feedforward controllers (e.g. TinyML 5->H->1 and Deep MLP 5->64->64->1).
 
-Definitions:
+Standard Metrics Definitions:
   - Weight MACs (Multiplications): Sum_{l} (d_{in}^{(l)} * d_{out}^{(l)})
       Each weight MAC corresponds to one multiply-accumulate operation (w * x).
-      In conventional hardware and deep learning reporting (e.g., standard dense layers),
-      a 5->8->1 network has 5*8 + 8*1 = 48 weight MACs.
-      A 5->64->64->1 network has 5*64 + 64*64 + 64*1 = 320 + 4096 + 64 = 4,480 weight MACs.
+      In conventional hardware and deep learning reporting (e.g., standard dense layers):
+        - A 5->8->1 network has 5*8 + 8*1 = 48 weight MACs.
+        - A 5->64->64->1 network has 5*64 + 64*64 + 64*1 = 320 + 4096 + 64 = 4,480 weight MACs.
 
   - Parameters: Total trainable weights and biases:
       Params = Sum_{l} (d_{in}^{(l)} * d_{out}^{(l)} + d_{out}^{(l)})
-      5->8->1 has 48 weights + 9 biases = 57 parameters.
-      5->64->64->1 has 4,480 weights + 129 biases = 4,609 parameters.
+        - 5->8->1 has 48 weights + 9 biases = 57 parameters.
+        - 5->64->64->1 has 4,480 weights + 129 biases = 4,609 parameters.
 
   - Bias Additions: Sum_{l} d_{out}^{(l)}
-      5->8->1 has 8 + 1 = 9 bias additions.
-      5->64->64->1 has 64 + 64 + 1 = 129 bias additions.
+      - 5->8->1 has 8 + 1 = 9 bias additions.
+      - 5->64->64->1 has 64 + 64 + 1 = 129 bias additions.
 
   - Activation Evaluations: Sum_{l} d_{out}^{(l)}
-      5->8->1 has 8 hidden activations (tanh) + 1 output activation (tanh/linear) = 9.
-      5->64->64->1 has 64 + 64 + 1 = 129 activation evaluations.
+      - 5->8->1 has 8 hidden activations (tanh) + 1 output activation (tanh/linear) = 9.
+      - 5->64->64->1 has 64 + 64 + 1 = 129 activation evaluations.
 
-  - Total Floating Point Operations (FLOPs / Arithmetic Ops):
-      FLOPs = 2 * Weight MACs (1 mul + 1 add per MAC) + Bias Additions + Activation Ops
+  - Operation-Count Proxy (Non-Standard Composite Metric):
+      Proxy Ops = 2 * Weight MACs (1 mul + 1 add per MAC) + Bias Additions + Activation Evals
+      NOTE: This is an explicitly defined operation-count proxy, NOT a standard FLOP count.
+      Standard deep learning and hardware literature reports Weight MACs and Parameter counts.
 """
 
 from __future__ import annotations
@@ -46,8 +48,8 @@ def count_dense_layer_ops(
     biases = out_dim if has_bias else 0
     activations = out_dim if activation != "none" else 0
     
-    # 1 MAC = 1 multiplication + 1 addition (2 FLOPs)
-    total_flops = (2 * weight_macs) + biases + activations
+    # Explicitly defined operation-count proxy (2 * MACs + biases + activations)
+    ops_proxy = (2 * weight_macs) + biases + activations
     total_params = weights + biases
 
     return {
@@ -57,7 +59,7 @@ def count_dense_layer_ops(
         "parameters": total_params,
         "bias_additions": biases,
         "activation_evals": activations,
-        "total_flops": total_flops,
+        "operation_count_proxy": ops_proxy,
     }
 
 
@@ -76,7 +78,7 @@ def compute_feedforward_ops(
     total_biases = 0
     total_bias_adds = 0
     total_act_evals = 0
-    total_flops = 0
+    total_ops_proxy = 0
     layers_breakdown: List[Dict[str, Any]] = []
 
     for i in range(len(layer_dims) - 1):
@@ -97,7 +99,7 @@ def compute_feedforward_ops(
         total_biases += layer_stats["biases"]
         total_bias_adds += layer_stats["bias_additions"]
         total_act_evals += layer_stats["activation_evals"]
-        total_flops += layer_stats["total_flops"]
+        total_ops_proxy += layer_stats["operation_count_proxy"]
 
     return {
         "layer_dims": list(layer_dims),
@@ -107,7 +109,7 @@ def compute_feedforward_ops(
         "total_parameters": total_weights + total_biases,
         "bias_additions": total_bias_adds,
         "activation_evals": total_act_evals,
-        "total_flops": total_flops,
+        "operation_count_proxy": total_ops_proxy,
         "layers": layers_breakdown,
     }
 

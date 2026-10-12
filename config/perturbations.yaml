@@ -1,13 +1,14 @@
 # ==============================================================================
-# EvoEdge Experimental Perturbation Distribution Specification (v2.1)
+# EvoEdge Experimental Perturbation Distribution Specification (v2.2)
 # ==============================================================================
 # Resolves experimental split leakage, separates prior diagnostic exposures,
 # and declares the genuinely held-out, unexposed final test suite.
 #
 # Partitions:
-#   - Training split:   seeds 0..199
-#   - Validation split: seeds 200..399
-#   - Final Test split: seeds 1000..1099
+#   - Training split:                      seeds 0..199
+#   - Validation split:                    seeds 200..399
+#   - Historical Test split (Comparability): seeds 1000..1099
+#   - Supplementary Untouched Test split:   seeds 2000..2099
 #
 # Exposure Separation:
 #   Conditions tested during historical handoffs or Phase 1 failure diagnoses
@@ -16,7 +17,7 @@
 #   A new GENUINELY UNEXPOSED final benchmark suite is defined below.
 # ==============================================================================
 
-version: "2.1"
+version: "2.2"
 environment: "CartPoleSwingUpEnv"
 
 splits:
@@ -28,7 +29,10 @@ splits:
     purpose: "Hyperparameter tuning, early stopping, and failure diagnosis"
   test:
     seed_range: [1000, 1099]
-    purpose: "Frozen final benchmark evaluation and publication reporting"
+    purpose: "Frozen historical benchmark evaluation for direct baseline comparability"
+  supplementary_untouched_test:
+    seed_range: [2000, 2099]
+    purpose: "Protocol Amendment v2.2: Pure untouched final test seeds reserved exclusively for final post-Phase-2 reporting"
 
 perturbations:
   pole_mass:
@@ -179,6 +183,7 @@ exposure_catalog:
 
   unexposed_final_test_suite:
     description: "Genuinely unseen final evaluation suite. Must NOT be evaluated during Phase 1 or controller training/tuning."
+    supplementary_untouched_seeds: [2000, 2099]
     conditions:
       - name: "unexposed_heavy_cart"
         params: { cart_mass: 1.35 }

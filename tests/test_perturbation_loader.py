@@ -26,10 +26,11 @@ class TestPerturbationLoader(unittest.TestCase):
     def test_load_valid_suite(self):
         """Standard perturbations.yaml must load successfully and return a valid suite."""
         suite = load_perturbation_suite(self.config_path)
-        self.assertEqual(suite.version, "2.1")
+        self.assertEqual(suite.version, "2.2")
         self.assertIn("training", suite.splits)
         self.assertIn("validation", suite.splits)
         self.assertIn("test", suite.splits)
+        self.assertIn("supplementary_untouched_test", suite.splits)
 
     def test_seed_partition_enforcement(self):
         """Sampling with an out-of-split seed must raise PerturbationConfigError."""
