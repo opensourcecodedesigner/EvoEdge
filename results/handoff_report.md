@@ -692,6 +692,7 @@ if __name__ == "__main__":
 - **Episode Length:** 500 steps.
 - **Evaluation Seeds:** 1000 to 1099 (100 seeds).
 - **Strict SUCCESS Definition:** `no rail hit (|x| <= 2.4 throughout) AND cos(theta) > 0.9 for at least 95 of the final 100 steps of the 500-step episode`.
+- **Definition of "Median Steps to Upright":** Defined as the median step index $t \in [1, 500]$ at which the upright condition $\cos(\theta) > 0.9$ is *first reached* exclusively among episodes that achieve full swing-up success without a rail collision. Unsuccessful episodes (those that suffer a rail collision or fail to sustain $\cos(\theta) > 0.9$ for $\ge 95$ of the final 100 steps) are excluded from the median calculation; if an entire evaluation set achieves 0% success, the statistic is formally reported as **None / Never Reached**.
 - **Controllers Evaluated:**
   1. Classical LQR (`LQRController(method="continuous")`)
   2. Hybrid Teacher (`HybridController()`, gains $k_E=0.4, k_x=1.2, k_v=0.8$)
