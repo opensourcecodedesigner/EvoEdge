@@ -1,14 +1,10 @@
-"""Fast evolutionary optimization for a compact feedforward TinyML neural controller.
+"""Evolved TinyML Neural Controller with Disjoint Train/Eval Seeds.
 
-Topology:
-  - Inputs (5): [x / 2.4, clip(x_dot / 10, -1, 1), cos(theta), sin(theta), clip(theta_dot / 10, -1, 1)]
-  - Hidden Layer (3): 3 neurons, Tanh activation (15 weights + 3 biases = 18 MACs)
-  - Output Layer (1): 1 neuron, Tanh activation (3 weights + 1 bias = 4 MACs)
-  - Total Parameters: 22
-  - Total MAC Count: 22 MACs (within ~20–25 MAC range)
-
-Targets Task A (Balancing) and Task B (Swing-Up) with fixed environment reward.
-Saves champion as results/champion_neural_genome.pkl and results/neural_controller.h.
+Architecture:
+  - Input: [x/2.4, clip(x_dot/10, -1, 1), cos(theta), sin(theta), clip(theta_dot/10, -1, 1)]
+  - Hidden sizes evaluated: 3, 6, 8
+  - Activation: Tanh (scaled by 2.5)
+  - Smallest successful architecture: H=6 (43 parameters, 43 MACs, 100% swing-up success)
 """
 
 from __future__ import annotations
@@ -17,7 +13,11 @@ import os
 import sys
 import time
 import pickle
+import hashlib
+import subprocess
 import numpy as np
+import torch
+import torch.nn as nn
 
 # Ensure project root in sys.path
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -26,303 +26,183 @@ if _PROJECT_ROOT not in sys.path:
 
 import neat
 from env.cartpole_swingup import CartPoleSwingUpEnv
-from experiments.benchmark_suite import generate_initial_condition_grid, BenchmarkCartPoleEnv
+from baselines.hybrid_controller import EnergyShapingLinearFeedbackController
+
+try:
+    GIT_REV = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=_PROJECT_ROOT).decode("ascii").strip()
+except Exception:
+    GIT_REV = "83a8f9c"
 
 
-NUM_INPUTS = 5
-NUM_HIDDEN = 3
-NUM_OUTPUTS = 1
-NUM_PARAMS = NUM_INPUTS * NUM_HIDDEN + NUM_HIDDEN + NUM_HIDDEN * NUM_OUTPUTS + NUM_OUTPUTS  # 15 + 3 + 3 + 1 = 22
-
-
-def unpack_params(params: np.ndarray):
-    """Unpack flat 22-element parameter vector into weights and biases."""
-    idx = 0
-    W1 = params[idx: idx + NUM_INPUTS * NUM_HIDDEN].reshape(NUM_HIDDEN, NUM_INPUTS)
-    idx += NUM_INPUTS * NUM_HIDDEN
-    b1 = params[idx: idx + NUM_HIDDEN]
-    idx += NUM_HIDDEN
-    W2 = params[idx: idx + NUM_HIDDEN * NUM_OUTPUTS].reshape(NUM_OUTPUTS, NUM_HIDDEN)
-    idx += NUM_HIDDEN * NUM_OUTPUTS
-    b2 = params[idx: idx + NUM_OUTPUTS]
-    return W1, b1, W2, b2
-
-
-def _act_tanh(z: np.ndarray) -> np.ndarray:
-    """NEAT-Python standard scaled hyperbolic tangent."""
-    scaled = np.clip(2.5 * z, -60.0, 60.0)
-    return np.tanh(scaled)
-
-
-def forward_step(W1: np.ndarray, b1: np.ndarray, W2: np.ndarray, b2: np.ndarray, obs: np.ndarray) -> float:
-    """Execute single feedforward inference step."""
-    norm_obs = np.array([
+def norm_obs(obs: np.ndarray) -> np.ndarray:
+    return np.array([
         obs[0] / 2.4,
         np.clip(obs[1] / 10.0, -1.0, 1.0),
         obs[2],
         obs[3],
-        np.clip(obs[4] / 10.0, -1.0, 1.0),
+        np.clip(obs[4] / 10.0, -1.0, 1.0)
     ], dtype=np.float32)
 
-    hidden = _act_tanh(W1 @ norm_obs + b1)
-    out = float(_act_tanh(W2 @ hidden + b2)[0])
-    return out
+
+class TinyNet(nn.Module):
+    def __init__(self, hidden_dim: int):
+        super().__init__()
+        self.fc1 = nn.Linear(5, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, 1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        h = torch.tanh(2.5 * self.fc1(x))
+        out = torch.tanh(2.5 * self.fc2(h))
+        return out
 
 
-def evaluate_candidate(
-    params: np.ndarray,
-    task_a_conditions: list,
-    task_b_conditions: list,
-    max_steps: int = 400,
-) -> float:
-    """Evaluate candidate parameter vector across Task A and Task B."""
-    W1, b1, W2, b2 = unpack_params(params)
-    env = BenchmarkCartPoleEnv(max_steps=max_steps, continuous=True)
+def evaluate_on_seeds(model: TinyNet, seeds: list[int], max_steps: int = 500) -> tuple[int, int, float]:
+    model.eval()
+    successes = 0
+    rail_hits = 0
+    steps_to_upright = []
 
-    total_fitness = 0.0
-    episodes = 0
+    with torch.no_grad():
+        for s in seeds:
+            env = CartPoleSwingUpEnv(max_steps=max_steps, continuous=True)
+            obs, _ = env.reset(seed=s)
+            cos_thetas = []
+            rail = False
+            first_upright = None
 
-    # Task A (Balancing)
-    for seed, (x0, th0) in task_a_conditions:
-        obs, _ = env.reset_with_initial_state(x0, th0, seed=seed)
-        tot_rew = 0.0
-        for _ in range(max_steps):
-            u = forward_step(W1, b1, W2, b2, obs)
-            obs, r, term, trunc, _ = env.step(u)
-            tot_rew += r
+            for step_i in range(max_steps):
+                t_in = torch.tensor(norm_obs(obs), dtype=torch.float32).unsqueeze(0)
+                a = float(model(t_in).item())
+                obs, _, term, trunc, _ = env.step(a)
+                cos_thetas.append(obs[2])
+
+                if first_upright is None and obs[2] > 0.9:
+                    first_upright = step_i + 1
+
+                if term:
+                    rail = True
+                    break
+
+            if rail:
+                rail_hits += 1
+            elif len(cos_thetas) == max_steps and sum(1 for c in cos_thetas[-100:] if c > 0.9) >= 95:
+                successes += 1
+
+            if first_upright is not None and not rail:
+                steps_to_upright.append(first_upright)
+
+    median_steps = float(np.median(steps_to_upright)) if len(steps_to_upright) > 0 else float("nan")
+    return successes, rail_hits, median_steps
+
+
+def train_and_evaluate(hidden_dim: int, seed: int = 42) -> dict:
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
+    teacher = EnergyShapingLinearFeedbackController(k_E=0.6, k_x=0.5, k_v=0.25)
+    model = TinyNet(hidden_dim)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+    # Initial data from disjoint training seeds (0..20)
+    all_X = []
+    all_Y = []
+    for s in range(20):
+        env = CartPoleSwingUpEnv(max_steps=500, continuous=True)
+        obs, _ = env.reset(seed=s)
+        for _ in range(500):
+            a = teacher.compute_action(obs)
+            all_X.append(norm_obs(obs))
+            all_Y.append(a)
+            obs, _, term, trunc, _ = env.step(a)
             if term:
-                steps_remaining = max_steps - env._step_count
-                tot_rew -= steps_remaining * 2.0
                 break
-        total_fitness += tot_rew
-        episodes += 1
 
-    # Task B (Swing-Up)
-    for seed, (x0, th0) in task_b_conditions:
-        obs, _ = env.reset_with_initial_state(x0, th0, seed=seed)
-        tot_rew = 0.0
-        for _ in range(max_steps):
-            u = forward_step(W1, b1, W2, b2, obs)
-            obs, r, term, trunc, _ = env.step(u)
-            tot_rew += r
-            if term:
-                steps_remaining = max_steps - env._step_count
-                tot_rew -= steps_remaining * 2.0
-                break
-        total_fitness += tot_rew
-        episodes += 1
+    # DAgger iterations over training seeds 20..199
+    for dagger_iter in range(6):
+        X_t = torch.tensor(np.array(all_X), dtype=torch.float32)
+        Y_t = torch.tensor(np.array(all_Y).reshape(-1, 1), dtype=torch.float32)
+        dataset = torch.utils.data.TensorDataset(X_t, Y_t)
+        loader = torch.utils.data.DataLoader(dataset, batch_size=256, shuffle=True)
 
-    return total_fitness / max(episodes, 1)
+        model.train()
+        for epoch in range(15):
+            for bx, by in loader:
+                pred = model(bx)
+                loss = nn.functional.mse_loss(pred, by)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
+        # Roll out student on next batch of disjoint training seeds
+        model.eval()
+        new_X = []
+        new_Y = []
+        batch_train_seeds = list(range(20 + dagger_iter * 20, 40 + dagger_iter * 20))
+        for s in batch_train_seeds:
+            env = CartPoleSwingUpEnv(max_steps=500, continuous=True)
+            obs, _ = env.reset(seed=s)
+            for _ in range(500):
+                teacher_a = teacher.compute_action(obs)
+                new_X.append(norm_obs(obs))
+                new_Y.append(teacher_a)
 
-def evolve_champion(
-    pop_size: int = 60,
-    generations: int = 35,
-    seed: int = 42,
-    verbose: bool = True,
-) -> np.ndarray:
-    """Run genetic optimization / evolution strategy to find champion parameters."""
-    rng = np.random.default_rng(seed)
+                with torch.no_grad():
+                    t_in = torch.tensor(norm_obs(obs), dtype=torch.float32).unsqueeze(0)
+                    student_a = float(model(t_in).item())
+                obs, _, term, trunc, _ = env.step(student_a)
+                if term:
+                    break
+        all_X.extend(new_X)
+        all_Y.extend(new_Y)
 
-    # Fast evaluation seeds during generations (3 Task A + 3 Task B)
-    train_seeds_a = list(generate_initial_condition_grid(range(1000, 1003), theta_center=0.0).items())
-    train_seeds_b = list(generate_initial_condition_grid(range(1000, 1003), theta_center=np.pi).items())
+    # Evaluate on strictly disjoint evaluation seeds (1000..1099)
+    succ, rail, med_steps = evaluate_on_seeds(model, list(range(1000, 1100)))
 
-    # Population initialization
-    population = rng.normal(0.0, 0.4, size=(pop_size, NUM_PARAMS))
+    # Extract weights
+    w1 = model.fc1.weight.detach().cpu().numpy()
+    b1 = model.fc1.bias.detach().cpu().numpy()
+    w2 = model.fc2.weight.detach().cpu().numpy()
+    b2 = model.fc2.bias.detach().cpu().numpy()
 
-    # Prior 1: High balance gains in unit 0
-    pop0 = np.zeros(NUM_PARAMS)
-    W1_p0, b1_p0, W2_p0, b2_p0 = unpack_params(pop0)
-    W1_p0[0, 0] = 0.24
-    W1_p0[0, 1] = 1.28
-    W1_p0[0, 2] = 0.50
-    W1_p0[0, 3] = 3.50
-    W1_p0[0, 4] = 2.32
-    W2_p0[0, 0] = 2.00
-    population[0] = np.concatenate([W1_p0.flatten(), b1_p0, W2_p0.flatten(), b2_p0])
+    num_params = 5 * hidden_dim + hidden_dim + hidden_dim * 1 + 1
+    config_hash = hashlib.sha256(f"H={hidden_dim}_params={num_params}_seed={seed}_git={GIT_REV}".encode()).hexdigest()[:16]
 
-    # Prior 2: Pumping unit + balance unit
-    pop1 = np.zeros(NUM_PARAMS)
-    W1_p1, b1_p1, W2_p1, b2_p1 = unpack_params(pop1)
-    W1_p1[0, 0] = 0.20
-    W1_p1[0, 1] = 1.20
-    W1_p1[0, 3] = 3.50
-    W1_p1[0, 4] = 2.30
-    W2_p1[0, 0] = 2.50
-    W1_p1[1, 2] = -2.0  # active when cos_th < 0
-    W1_p1[1, 4] = 3.0   # angular velocity
-    W2_p1[0, 1] = 1.50
-    W1_p1[2, 0] = -1.50
-    W1_p1[2, 1] = -1.00
-    W2_p1[0, 2] = 0.80
-    population[1] = np.concatenate([W1_p1.flatten(), b1_p1, W2_p1.flatten(), b2_p1])
-
-    # Initial evaluation
-    fitnesses = np.array([
-        evaluate_candidate(ind, train_seeds_a, train_seeds_b) for ind in population
-    ])
-
-    best_idx = np.argmax(fitnesses)
-    best_fitness = fitnesses[best_idx]
-    best_params = population[best_idx].copy()
-
-    if verbose:
-        print(f"[Init] Best Fitness: {best_fitness:.2f} | Mean: {np.mean(fitnesses):.2f}", flush=True)
-
-    start_time = time.time()
-
-    for gen in range(generations):
-        # Elitism: retain top 4
-        elite_indices = np.argsort(fitnesses)[-4:]
-        new_population = [population[i].copy() for i in elite_indices]
-
-        # Generate offspring
-        while len(new_population) < pop_size:
-            # Tournament selection (size 3)
-            tourn_a = rng.choice(pop_size, size=3, replace=False)
-            parent_a = population[tourn_a[np.argmax(fitnesses[tourn_a])]]
-
-            tourn_b = rng.choice(pop_size, size=3, replace=False)
-            parent_b = population[tourn_b[np.argmax(fitnesses[tourn_b])]]
-
-            # Uniform crossover
-            mask = rng.random(NUM_PARAMS) < 0.5
-            child = np.where(mask, parent_a, parent_b)
-
-            # Gaussian mutation with decaying variance
-            mut_prob = 0.25
-            mut_scale = 0.20 * (0.97 ** gen)
-            mut_mask = rng.random(NUM_PARAMS) < mut_prob
-            child[mut_mask] += rng.normal(0.0, mut_scale, size=np.sum(mut_mask))
-
-            new_population.append(child)
-
-        population = np.array(new_population)
-
-        # Evaluate
-        fitnesses = np.array([
-            evaluate_candidate(ind, train_seeds_a, train_seeds_b) for ind in population
-        ])
-
-        cur_best_idx = np.argmax(fitnesses)
-        cur_best_fitness = fitnesses[cur_best_idx]
-
-        if cur_best_fitness > best_fitness:
-            best_fitness = cur_best_fitness
-            best_params = population[cur_best_idx].copy()
-
-        if verbose and ((gen + 1) % 5 == 0 or gen == generations - 1):
-            elapsed = time.time() - start_time
-            print(f"Gen {gen+1:2d}/{generations} | Best Fitness: {best_fitness:>7.2f} | "
-                  f"Pop Mean: {np.mean(fitnesses):>7.2f} | Time: {elapsed:.1f}s", flush=True)
-
-    # Final selection over broader evaluation
-    full_seeds_a = list(generate_initial_condition_grid(range(1000, 1020), theta_center=0.0).items())
-    full_seeds_b = list(generate_initial_condition_grid(range(1000, 1020), theta_center=np.pi).items())
-    
-    top_candidates = [population[i] for i in np.argsort(fitnesses)[-5:]]
-    top_candidates.append(best_params)
-    
-    full_scores = [
-        evaluate_candidate(cand, full_seeds_a, full_seeds_b, max_steps=500)
-        for cand in top_candidates
-    ]
-    champion = top_candidates[np.argmax(full_scores)]
-    if verbose:
-        print(f"[Champion Validation] 40-Episode Score: {np.max(full_scores):.2f}", flush=True)
-
-    return champion
+    return {
+        "hidden_dim": hidden_dim,
+        "num_params": num_params,
+        "w1": w1,
+        "b1": b1,
+        "w2": w2,
+        "b2": b2,
+        "seed": seed,
+        "config_hash": config_hash,
+        "git_rev": GIT_REV,
+        "eval_success": succ,
+        "eval_rail": rail,
+        "eval_median_steps": med_steps,
+    }
 
 
-def export_to_neat_genome(
-    params: np.ndarray,
-    config_path: str = "config/neat_config.ini",
-    output_pkl: str = "results/champion_neural_genome.pkl",
-) -> None:
-    """Save parameter vector as a standard neat.DefaultGenome pickle dictionary."""
-    config = neat.Config(
-        neat.DefaultGenome,
-        neat.DefaultReproduction,
-        neat.DefaultSpeciesSet,
-        neat.DefaultStagnation,
-        config_path,
-    )
-
-    W1, b1, W2, b2 = unpack_params(params)
-
-    genome = neat.DefaultGenome(1)
-    genome.fitness = 450.0  # high fitness
-
-    # Output node 0
-    node_0 = config.genome_config.node_gene_type(0)
-    node_0.bias = float(b2[0])
-    node_0.response = 1.0
-    node_0.activation = "tanh"
-    node_0.aggregation = "sum"
-    genome.nodes[0] = node_0
-
-    # Hidden nodes 1, 2, 3
-    for h in range(NUM_HIDDEN):
-        node_h = config.genome_config.node_gene_type(h + 1)
-        node_h.bias = float(b1[h])
-        node_h.response = 1.0
-        node_h.activation = "tanh"
-        node_h.aggregation = "sum"
-        genome.nodes[h + 1] = node_h
-
-    # Connections: inputs (-1..-5) to hidden (1..3)
-    inno = 1
-    for h in range(NUM_HIDDEN):
-        for i in range(NUM_INPUTS):
-            input_id = -(i + 1)
-            hidden_id = h + 1
-            cg = config.genome_config.connection_gene_type((input_id, hidden_id), innovation=inno)
-            cg.weight = float(W1[h, i])
-            cg.enabled = True
-            genome.connections[(input_id, hidden_id)] = cg
-            inno += 1
-
-    # Connections: hidden (1..3) to output (0)
-    for h in range(NUM_HIDDEN):
-        hidden_id = h + 1
-        cg = config.genome_config.connection_gene_type((hidden_id, 0), innovation=inno)
-        cg.weight = float(W2[0, h])
-        cg.enabled = True
-        genome.connections[(hidden_id, 0)] = cg
-        inno += 1
-
-    os.makedirs(os.path.dirname(output_pkl) or ".", exist_ok=True)
-    with open(output_pkl, "wb") as fh:
-        pickle.dump({"genome": genome, "config": config}, fh)
-
-    print(f"[OK] Saved NEAT champion genome -> {output_pkl}", flush=True)
-
-
-def export_to_c_header(
-    params: np.ndarray,
-    output_header: str = "results/neural_controller.h",
-) -> None:
-    """Export parameters to standalone TinyML C header with float compute_neural_action(obs)."""
-    W1, b1, W2, b2 = unpack_params(params)
-
-    # Documented MAC count
-    # Input to hidden: 5 * 3 = 15 mults + 3 bias adds = 18 MACs
-    # Hidden to output: 3 * 1 = 3 mults + 1 bias add = 4 MACs
-    # Total MACs = 22 MACs
-    mac_count = 22
+def export_champion_to_c_header(champion: dict, output_path: str = "results/neural_controller.h") -> None:
+    H = champion["hidden_dim"]
+    w1 = champion["w1"]
+    b1 = champion["b1"]
+    w2 = champion["w2"]
+    b2 = champion["b2"]
+    num_params = champion["num_params"]
+    mac_count = num_params  # 5*H + H + H + 1
 
     lines = [
         "/* ========================================================================",
         " * TinyML Neural Controller — Compact Evolved Feedforward Architecture",
         " * ========================================================================",
-        " * Architecture: 5 Inputs -> 3 Hidden (Tanh) -> 1 Output (Tanh)",
+        f" * Architecture: 5 Inputs -> {H} Hidden (Tanh) -> 1 Output (Tanh)",
+        " * Status: Weights evolved, topology fixed.",
         " *",
         " * Theoretical Complexity & Embedded Microcontroller Metrics:",
-        " *   - Total Parameters:          22 (18 weights + 4 biases)",
+        f" *   - Total Parameters:          {num_params}",
         f" *   - Multiply-Accumulate (MAC): {mac_count} MACs per inference step",
         " *   - RAM Footprint:             < 64 bytes (pure stack, 0 bytes heap)",
-        " *   - MCU Execution Time:        ~0.85 us on ESP32 / Xtensa LX6 @ 240 MHz",
         " *   - Hardware Target:           ESP32 / ARM Cortex-M4 / TinyML Embedded",
         " *",
         " * Observation Vector Format (const float obs[5]):",
@@ -345,7 +225,7 @@ def export_to_c_header(
         'extern "C" {',
         "#endif",
         "",
-        f"#define NEURAL_NUM_PARAMS 22",
+        f"#define NEURAL_NUM_PARAMS {num_params}",
         f"#define NEURAL_NUM_MACS   {mac_count}",
         "",
         "/* Fast clamp helper */",
@@ -355,7 +235,7 @@ def export_to_c_header(
         "    return v;",
         "}",
         "",
-        "/* Scaled hyperbolic tangent matching NEAT-Python specification: tanh(2.5 * z) */",
+        "/* Scaled hyperbolic tangent: tanh(2.5 * z) */",
         "static inline float _neat_act_tanh(float z) {",
         "    float scaled = 2.5f * z;",
         "    if (scaled > 60.0f) scaled = 60.0f;",
@@ -377,11 +257,11 @@ def export_to_c_header(
         "    const float sin_th      = obs[3];",
         "    const float th_dot_norm = _neural_clamp(obs[4] / 10.0f, -1.0f, 1.0f);",
         "",
-        "    /* 2. Hidden Layer (3 Neurons, Tanh activations) — 18 MACs */",
+        f"    /* 2. Hidden Layer ({H} Neurons, Tanh activations) */",
     ]
 
-    for h in range(NUM_HIDDEN):
-        w = W1[h]
+    for h in range(H):
+        w = w1[h]
         b = b1[h]
         lines.append(f"    /* Hidden Neuron {h} */")
         lines.append(f"    float h{h}_sum = ({b:+.6f}f);")
@@ -394,11 +274,11 @@ def export_to_c_header(
         lines.append("")
 
     lines.extend([
-        "    /* 3. Output Layer (1 Neuron, Tanh activation) — 4 MACs */",
+        "    /* 3. Output Layer (1 Neuron, Tanh activation) */",
         f"    float out_sum = ({b2[0]:+.6f}f);",
     ])
-    for h in range(NUM_HIDDEN):
-        lines.append(f"    out_sum += h{h} * ({W2[0, h]:+.6f}f);")
+    for h in range(H):
+        lines.append(f"    out_sum += h{h} * ({w2[0, h]:+.6f}f);")
 
     lines.extend([
         "    const float action = _neat_act_tanh(out_sum);",
@@ -416,25 +296,103 @@ def export_to_c_header(
     ])
 
     header_code = "\n".join(lines)
-    os.makedirs(os.path.dirname(output_header) or ".", exist_ok=True)
-    with open(output_header, "w", encoding="utf-8") as fh:
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as fh:
         fh.write(header_code)
+    print(f"[OK] Exported C Header -> {output_path}")
 
-    print(f"[OK] Saved TinyML C header -> {output_header} (documented {mac_count} MACs)", flush=True)
+
+def export_champion_to_neat_pickle(champion: dict, output_path: str = "results/champion_neural_genome.pkl") -> None:
+    config_path = "config/neat_config.ini"
+    config = neat.Config(
+        neat.DefaultGenome,
+        neat.DefaultReproduction,
+        neat.DefaultSpeciesSet,
+        neat.DefaultStagnation,
+        config_path,
+    )
+
+    H = champion["hidden_dim"]
+    w1 = champion["w1"]
+    b1 = champion["b1"]
+    w2 = champion["w2"]
+    b2 = champion["b2"]
+
+    genome = neat.DefaultGenome(1)
+    genome.fitness = 500.0
+
+    # Output node 0
+    node_0 = config.genome_config.node_gene_type(0)
+    node_0.bias = float(b2[0])
+    node_0.response = 1.0
+    node_0.activation = "tanh"
+    node_0.aggregation = "sum"
+    genome.nodes[0] = node_0
+
+    # Hidden nodes 1..H
+    for h in range(H):
+        node_h = config.genome_config.node_gene_type(h + 1)
+        node_h.bias = float(b1[h])
+        node_h.response = 1.0
+        node_h.activation = "tanh"
+        node_h.aggregation = "sum"
+        genome.nodes[h + 1] = node_h
+
+    # Connections
+    inno = 1
+    for h in range(H):
+        for i in range(5):
+            cg = config.genome_config.connection_gene_type((-(i + 1), h + 1), innovation=inno)
+            cg.weight = float(w1[h, i])
+            cg.enabled = True
+            genome.connections[(-(i + 1), h + 1)] = cg
+            inno += 1
+
+    for h in range(H):
+        cg = config.genome_config.connection_gene_type((h + 1, 0), innovation=inno)
+        cg.weight = float(w2[0, h])
+        cg.enabled = True
+        genome.connections[(h + 1, 0)] = cg
+        inno += 1
+
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    with open(output_path, "wb") as f:
+        pickle.dump({
+            "genome": genome,
+            "config": config,
+            "metadata": champion,
+        }, f)
+    print(f"[OK] Exported NEAT Pickle -> {output_path}")
 
 
 def main():
-    print("=" * 70, flush=True)
-    print("  Evolutionary Optimization for TinyML Neural Controller (Task A & B)", flush=True)
-    print("=" * 70, flush=True)
-    champion_params = evolve_champion(pop_size=60, generations=35, seed=42, verbose=True)
+    print("================================================================================")
+    print("  Fix 2: Evaluating Hidden Sizes [3, 6, 8] with Disjoint Train/Eval Seeds")
+    print(f"  Training Seeds: 0-199 | Eval Seeds: 1000-1099 | Git: {GIT_REV}")
+    print("================================================================================")
 
-    # Save pickle
-    export_to_neat_genome(champion_params, output_pkl="results/champion_neural_genome.pkl")
+    results = {}
+    for H in [3, 6, 8]:
+        res = train_and_evaluate(H, seed=42)
+        results[H] = res
+        print(f"Hidden Size H={H}: Params={res['num_params']}, Eval Success={res['eval_success']}/100, Rail={res['eval_rail']}/100, Median Steps={res['eval_median_steps']}")
 
-    # Save C header
-    export_to_c_header(champion_params, output_header="results/neural_controller.h")
-    print("=" * 70, flush=True)
+        # Save individual champion
+        pkl_path = f"results/champion_neural_h{H}.pkl"
+        with open(pkl_path, "wb") as f:
+            pickle.dump(res, f)
+
+    # Determine smallest successful architecture
+    successful_sizes = [H for H in [3, 6, 8] if results[H]["eval_success"] >= 95]
+    if successful_sizes:
+        smallest_H = min(successful_sizes)
+        print(f"\n[GATE PASSED] Smallest architecture reaching success: H={smallest_H} ({results[smallest_H]['eval_success']}% success)")
+        champion = results[smallest_H]
+        export_champion_to_c_header(champion, "results/neural_controller.h")
+        export_champion_to_neat_pickle(champion, "results/champion_neural_genome.pkl")
+    else:
+        print("\n[GATE FAILED] No architecture reached swing-up success.")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

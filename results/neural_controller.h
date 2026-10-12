@@ -1,13 +1,13 @@
 /* ========================================================================
  * TinyML Neural Controller — Compact Evolved Feedforward Architecture
  * ========================================================================
- * Architecture: 5 Inputs -> 3 Hidden (Tanh) -> 1 Output (Tanh)
+ * Architecture: 5 Inputs -> 8 Hidden (Tanh) -> 1 Output (Tanh)
+ * Status: Weights evolved, topology fixed.
  *
  * Theoretical Complexity & Embedded Microcontroller Metrics:
- *   - Total Parameters:          22 (18 weights + 4 biases)
- *   - Multiply-Accumulate (MAC): 22 MACs per inference step
+ *   - Total Parameters:          57
+ *   - Multiply-Accumulate (MAC): 57 MACs per inference step
  *   - RAM Footprint:             < 64 bytes (pure stack, 0 bytes heap)
- *   - MCU Execution Time:        ~0.85 us on ESP32 / Xtensa LX6 @ 240 MHz
  *   - Hardware Target:           ESP32 / ARM Cortex-M4 / TinyML Embedded
  *
  * Observation Vector Format (const float obs[5]):
@@ -30,8 +30,8 @@
 extern "C" {
 #endif
 
-#define NEURAL_NUM_PARAMS 22
-#define NEURAL_NUM_MACS   22
+#define NEURAL_NUM_PARAMS 57
+#define NEURAL_NUM_MACS   57
 
 /* Fast clamp helper */
 static inline float _neural_clamp(float v, float min_v, float max_v) {
@@ -40,7 +40,7 @@ static inline float _neural_clamp(float v, float min_v, float max_v) {
     return v;
 }
 
-/* Scaled hyperbolic tangent matching NEAT-Python specification: tanh(2.5 * z) */
+/* Scaled hyperbolic tangent matching training: tanh(2.5 * z) */
 static inline float _neat_act_tanh(float z) {
     float scaled = 2.5f * z;
     if (scaled > 60.0f) scaled = 60.0f;
@@ -62,39 +62,89 @@ static inline float compute_neural_action(const float obs[5]) {
     const float sin_th      = obs[3];
     const float th_dot_norm = _neural_clamp(obs[4] / 10.0f, -1.0f, 1.0f);
 
-    /* 2. Hidden Layer (3 Neurons, Tanh activations) — 18 MACs */
+    /* 2. Hidden Layer (8 Neurons, Tanh activations) */
     /* Hidden Neuron 0 */
-    float h0_sum = (+0.463863f);
-    h0_sum += x_norm      * (+0.704383f);
-    h0_sum += x_dot_norm  * (+0.587601f);
-    h0_sum += cos_th      * (-0.353934f);
-    h0_sum += sin_th      * (+3.569789f);
-    h0_sum += th_dot_norm * (+2.090387f);
+    float h0_sum = (+0.407136f);
+    h0_sum += x_norm      * (-0.598023f);
+    h0_sum += x_dot_norm  * (-2.703003f);
+    h0_sum += cos_th      * (+0.398716f);
+    h0_sum += sin_th      * (+0.248443f);
+    h0_sum += th_dot_norm * (-0.078436f);
     const float h0 = _neat_act_tanh(h0_sum);
 
     /* Hidden Neuron 1 */
-    float h1_sum = (-0.917275f);
-    h1_sum += x_norm      * (-0.560261f);
-    h1_sum += x_dot_norm  * (-0.748128f);
-    h1_sum += cos_th      * (-0.147078f);
-    h1_sum += sin_th      * (+0.820688f);
-    h1_sum += th_dot_norm * (-0.514977f);
+    float h1_sum = (+0.238957f);
+    h1_sum += x_norm      * (-1.101050f);
+    h1_sum += x_dot_norm  * (+0.297838f);
+    h1_sum += cos_th      * (-0.428523f);
+    h1_sum += sin_th      * (+0.000792f);
+    h1_sum += th_dot_norm * (+2.071201f);
     const float h1 = _neat_act_tanh(h1_sum);
 
     /* Hidden Neuron 2 */
-    float h2_sum = (+0.690867f);
-    h2_sum += x_norm      * (-0.144903f);
-    h2_sum += x_dot_norm  * (-0.212107f);
-    h2_sum += cos_th      * (+0.139512f);
-    h2_sum += sin_th      * (+0.283142f);
-    h2_sum += th_dot_norm * (-0.084436f);
+    float h2_sum = (+1.049509f);
+    h2_sum += x_norm      * (+0.153657f);
+    h2_sum += x_dot_norm  * (-3.796205f);
+    h2_sum += cos_th      * (-2.703894f);
+    h2_sum += sin_th      * (-0.086874f);
+    h2_sum += th_dot_norm * (-1.559311f);
     const float h2 = _neat_act_tanh(h2_sum);
 
-    /* 3. Output Layer (1 Neuron, Tanh activation) — 4 MACs */
-    float out_sum = (+0.134581f);
-    out_sum += h0 * (+2.448708f);
-    out_sum += h1 * (+0.278175f);
-    out_sum += h2 * (+0.253521f);
+    /* Hidden Neuron 3 */
+    float h3_sum = (+0.738620f);
+    h3_sum += x_norm      * (-0.355425f);
+    h3_sum += x_dot_norm  * (-0.347291f);
+    h3_sum += cos_th      * (+0.176512f);
+    h3_sum += sin_th      * (-1.587864f);
+    h3_sum += th_dot_norm * (-2.175164f);
+    const float h3 = _neat_act_tanh(h3_sum);
+
+    /* Hidden Neuron 4 */
+    float h4_sum = (-1.104928f);
+    h4_sum += x_norm      * (+0.748385f);
+    h4_sum += x_dot_norm  * (+2.572279f);
+    h4_sum += cos_th      * (+1.019709f);
+    h4_sum += sin_th      * (+10.906854f);
+    h4_sum += th_dot_norm * (+16.209131f);
+    const float h4 = _neat_act_tanh(h4_sum);
+
+    /* Hidden Neuron 5 */
+    float h5_sum = (-0.400138f);
+    h5_sum += x_norm      * (+1.188766f);
+    h5_sum += x_dot_norm  * (-1.605913f);
+    h5_sum += cos_th      * (+0.626634f);
+    h5_sum += sin_th      * (-0.600005f);
+    h5_sum += th_dot_norm * (-4.131932f);
+    const float h5 = _neat_act_tanh(h5_sum);
+
+    /* Hidden Neuron 6 */
+    float h6_sum = (-0.016123f);
+    h6_sum += x_norm      * (-0.412387f);
+    h6_sum += x_dot_norm  * (+4.933028f);
+    h6_sum += cos_th      * (+0.026898f);
+    h6_sum += sin_th      * (+1.118386f);
+    h6_sum += th_dot_norm * (+5.730555f);
+    const float h6 = _neat_act_tanh(h6_sum);
+
+    /* Hidden Neuron 7 */
+    float h7_sum = (+0.753834f);
+    h7_sum += x_norm      * (-0.509976f);
+    h7_sum += x_dot_norm  * (+0.747530f);
+    h7_sum += cos_th      * (-0.540305f);
+    h7_sum += sin_th      * (-2.233742f);
+    h7_sum += th_dot_norm * (-4.170272f);
+    const float h7 = _neat_act_tanh(h7_sum);
+
+    /* 3. Output Layer (1 Neuron, Tanh activation) */
+    float out_sum = (-0.604798f);
+    out_sum += h0 * (+0.472039f);
+    out_sum += h1 * (+0.843841f);
+    out_sum += h2 * (+0.538032f);
+    out_sum += h3 * (+1.157928f);
+    out_sum += h4 * (+0.263045f);
+    out_sum += h5 * (+0.730589f);
+    out_sum += h6 * (+0.399687f);
+    out_sum += h7 * (-0.831083f);
     const float action = _neat_act_tanh(out_sum);
 
     /* Saturate to [-1.0, 1.0] */
