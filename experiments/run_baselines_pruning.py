@@ -53,80 +53,50 @@ def norm_obs(obs: np.ndarray) -> np.ndarray:
     ], dtype=np.float32)
 
 
-class PerturbedEnv(CartPoleSwingUpEnv):
-    def __init__(
-        self,
-        pole_mass_scale: float = 1.0,
-        cart_mass_scale: float = 1.0,
-        b_cart: float = 0.0,
-        b_pole: float = 0.0,
-        obs_noise_sigma: float = 0.0,
-        delay_steps: int = 0,
-        seed: int | None = None,
-    ):
-        super().__init__(max_steps=500, continuous=True)
-        self.MASS_POLE = 0.1 * pole_mass_scale
-        self.MASS_CART = 1.0 * cart_mass_scale
-        self._total_mass = self.MASS_CART + self.MASS_POLE
-        self._polemass_length = self.MASS_POLE * self.LENGTH
-        self.b_cart = b_cart
-        self.b_pole = b_pole
-        self.obs_noise_sigma = obs_noise_sigma
-        self.delay_steps = delay_steps
-        self.action_queue = [0.0] * delay_steps
-        self._rng = np.random.default_rng(seed if seed is not None else 42)
+from utils.perturbation_loader import (
+    PerturbedCartPoleEnv,
+    load_perturbation_suite,
+    PerturbationSuite,
+    PerturbationConfigError,
+)
 
-    def reset(self, *, seed=None, options=None):
-        if seed is not None:
-            self._rng = np.random.default_rng(seed)
-        obs, info = super().reset(seed=seed, options=options)
-        self.action_queue = [0.0] * self.delay_steps
-        if self.obs_noise_sigma > 0.0:
-            obs = obs + self._rng.normal(0.0, self.obs_noise_sigma, size=obs.shape).astype(np.float32)
-        return obs, info
-
-    def step(self, action):
-        if self.delay_steps > 0:
-            self.action_queue.append(action)
-            act_applied = self.action_queue.pop(0)
-        else:
-            act_applied = action
-
-        x, x_dot, theta, theta_dot = self._state
-        force = float(np.clip(act_applied, -1.0, 1.0)) * self.FORCE_MAG
-
-        cos_th = np.cos(theta)
-        sin_th = np.sin(theta)
-        temp = (force - self.b_cart * x_dot + self._polemass_length * theta_dot**2 * sin_th) / self._total_mass
-        fric_pole = (self.b_pole / max(self._polemass_length, 1e-6)) * theta_dot
-        theta_acc = (self.GRAVITY * sin_th - cos_th * temp - fric_pole) / (
-            self.LENGTH * (4.0 / 3.0 - (self.MASS_POLE * cos_th**2) / self._total_mass)
-        )
-        x_acc = temp - (self._polemass_length * theta_acc * cos_th) / self._total_mass
-
-        x_dot = x_dot + self.TAU * x_acc
-        x = x + self.TAU * x_dot
-        theta_dot = theta_dot + self.TAU * theta_acc
-        theta = theta + self.TAU * theta_dot
-        theta = ((theta + np.pi) % (2.0 * np.pi)) - np.pi
-
-        self._state = np.array([x, x_dot, theta, theta_dot], dtype=np.float64)
-        self._step_count += 1
-        reward = float(np.cos(theta)) - 0.01 * (x / self.X_THRESHOLD) ** 2
-        terminated = bool(abs(x) > self.X_THRESHOLD)
-        truncated = self._step_count >= self.max_steps
-        obs = self._get_obs()
-        if self.obs_noise_sigma > 0.0:
-            obs = obs + self._rng.normal(0.0, self.obs_noise_sigma, size=obs.shape).astype(np.float32)
-        return obs, reward, terminated, truncated, {}
+# Compatibility alias
+PerturbedEnv = PerturbedCartPoleEnv
 
 
-def evaluate_model_on_env(act_fn, seeds: range = range(1000, 1100), **env_kwargs) -> Tuple[int, int]:
+def evaluate_model_on_env(
+    act_fn,
+    seeds: range = range(1000, 1100),
+    suite: Optional[PerturbationSuite] = None,
+    **env_kwargs,
+) -> Tuple[int, int]:
     """Evaluate an action function on given seeds and environment perturbations."""
+    if suite is None:
+        suite = load_perturbation_suite("config/perturbations.yaml")
+
+    # Enforce split partition: check that seeds do not touch the reserved prospective test range
+    final_test_range = suite.splits.get("supplementary_untouched_test", {}).get("seed_range", [2000, 2099])
+    for s in seeds:
+        if final_test_range[0] <= s <= final_test_range[1]:
+            raise PerturbationConfigError(
+                f"Seed {s} belongs to supplementary untouched final test split "
+                f"[{final_test_range[0]}..{final_test_range[1]}]. Access denied during baseline evaluation."
+            )
+
     succ = 0
     rail = 0
     for s in seeds:
-        env = PerturbedEnv(seed=s, **env_kwargs)
+        env = PerturbedCartPoleEnv(
+            max_steps=500,
+            continuous=True,
+            cart_mass=1.0 * float(env_kwargs.get("cart_mass_scale", 1.0)),
+            pole_mass=0.1 * float(env_kwargs.get("pole_mass_scale", 1.0)),
+            b_cart=float(env_kwargs.get("b_cart", 0.0)),
+            b_pole=float(env_kwargs.get("b_pole", 0.0)),
+            obs_noise_sigma=float(env_kwargs.get("obs_noise_sigma", 0.0)),
+            delay_steps=int(env_kwargs.get("delay_steps", 0)),
+            seed=s,
+        )
         obs, _ = env.reset(seed=s)
         cos_thetas = []
         hit = False
@@ -345,14 +315,16 @@ def main():
         act_fn = lambda obs, m=m_variant: float(m(torch.tensor(norm_obs(obs), dtype=torch.float32).unsqueeze(0)).item())
 
         print(f"\nModel: {model_name} (Active Params: {n_params}, Est Ops: {ops})")
+        suite = load_perturbation_suite("config/perturbations.yaml")
         variant_eval = {
             "name": model_name,
             "params": n_params,
             "ops": ops,
+            "config_hash": suite.config_hash,
             "scores": {},
         }
         for cond_name, kwargs in perturbations.items():
-            succ, rail = evaluate_model_on_env(act_fn, seeds=range(1000, 1100), **kwargs)
+            succ, rail = evaluate_model_on_env(act_fn, seeds=range(1000, 1100), suite=suite, **kwargs)
             variant_eval["scores"][cond_name] = (succ, rail)
             print(f"  {cond_name:<18}: Success = {succ:>3}/100, Rail = {rail:>3}%")
         results_summary.append(variant_eval)

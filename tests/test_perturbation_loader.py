@@ -26,7 +26,7 @@ class TestPerturbationLoader(unittest.TestCase):
     def test_load_valid_suite(self):
         """Standard perturbations.yaml must load successfully and return a valid suite."""
         suite = load_perturbation_suite(self.config_path)
-        self.assertEqual(suite.version, "2.2")
+        self.assertEqual(suite.version, "2.3")
         self.assertIn("training", suite.splits)
         self.assertIn("validation", suite.splits)
         self.assertIn("test", suite.splits)
@@ -72,15 +72,15 @@ class TestPerturbationLoader(unittest.TestCase):
         finally:
             os.remove(temp_path)
 
-    def test_unmigrated_runners_registry(self):
-        """Runner migration registry must list all legacy runners with UNMIGRATED status."""
+    def test_runner_migration_registry(self):
+        """Runner migration registry must list all runners with known valid status."""
         registry = get_unmigrated_runners()
         self.assertIn("experiments/benchmark_suite.py", registry)
         self.assertIn("experiments/runner.py", registry)
         self.assertIn("experiments/run_baselines_pruning.py", registry)
         self.assertIn("evolution/evolve_tinyml.py", registry)
         for runner, data in registry.items():
-            self.assertEqual(data["status"], "UNMIGRATED")
+            self.assertIn(data["status"], ["MIGRATED", "UNMIGRATED"])
 
 
 if __name__ == "__main__":

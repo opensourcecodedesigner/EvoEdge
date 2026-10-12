@@ -1,0 +1,37 @@
+{
+  "status": "PASS",
+  "duration_seconds": 0.137,
+  "config_hash": "a36571f215fe771e",
+  "protocol_version": "2.3",
+  "split_evaluated": "validation",
+  "seeds_evaluated": [
+    200,
+    201,
+    202,
+    203,
+    204,
+    205,
+    206,
+    207,
+    208,
+    209
+  ],
+  "controller_results": {
+    "LQR": {
+      "mean_reward": -199.86,
+      "boundary_violation_rate": 0.0,
+      "steady_state_jitter_rms": 176.9435,
+      "config_hash": "a36571f215fe771e",
+      "provenance_episodes": 10,
+      "elapsed_seconds": 0.06
+    },
+    "Hybrid ES-LQR": {
+      "mean_reward": 0.35,
+      "boundary_violation_rate": 0.0,
+      "steady_state_jitter_rms": 108.9689,
+      "config_hash": "a36571f215fe771e",
+      "provenance_episodes": 10,
+      "elapsed_seconds": 0.043
+    }
+  }
+}

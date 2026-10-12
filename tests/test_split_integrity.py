@@ -72,8 +72,9 @@ class TestSplitIntegrityValidator(unittest.TestCase):
     def test_ood_violation_detected(self):
         """Test benchmark inside training range must raise SplitIntegrityError."""
         cfg = yaml.safe_load(yaml.dump(self.valid_cfg))
-        # Set training cart mass range to include benchmark 1.30 kg
-        cfg["perturbations"]["cart_mass"]["training"]["range"] = [0.85, 1.35]
+        bm_val = cfg["perturbations"]["cart_mass"]["test"]["benchmark_fixed"]
+        # Set training cart mass range to include benchmark
+        cfg["perturbations"]["cart_mass"]["training"]["range"] = [0.85, bm_val + 0.05]
         path = self._write_temp_cfg(cfg)
         try:
             with self.assertRaises(SplitIntegrityError) as ctx:

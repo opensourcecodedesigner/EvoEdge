@@ -48,13 +48,23 @@ from baselines.lqr import LQRController
 from baselines.mlp import FixedMLPController, normalize_obs
 from baselines.hybrid_controller import HybridController
 from utils.serialization import load_genome
+from utils.perturbation_loader import (
+    PerturbedCartPoleEnv,
+    load_perturbation_suite,
+    PerturbationSuite,
+    PerturbationConfigError,
+)
 
 
 # ── Benchmark Environment with Initial Condition & Perturbation Injection ────
 
 
-class BenchmarkCartPoleEnv(CartPoleSwingUpEnv):
-    """CartPole environment with deterministic initial condition and perturbation support."""
+class BenchmarkCartPoleEnv(PerturbedCartPoleEnv):
+    """CartPole environment with deterministic initial condition and perturbation support.
+
+    Inherits from standardized PerturbedCartPoleEnv for friction dynamics, transport delay,
+    channel-specific sensor noise, and provenance tracking.
+    """
 
     def __init__(
         self,
@@ -62,50 +72,27 @@ class BenchmarkCartPoleEnv(CartPoleSwingUpEnv):
         continuous: bool = True,
         cart_mass_scale: float = 1.0,
         obs_noise_sigma: float = 0.0,
-    ) -> None:
-        super().__init__(max_steps=max_steps, continuous=continuous)
-        self.boundary_violated: bool = False
-        self.cart_mass_scale = float(cart_mass_scale)
-        self.obs_noise_sigma = float(obs_noise_sigma)
-
-        # Scale cart mass (Nominal 1.0 kg -> Perturbed 1.3 kg for +30%)
-        self.MASS_CART = 1.0 * self.cart_mass_scale
-        self._total_mass = self.MASS_CART + self.MASS_POLE
-        self._rng = np.random.default_rng(42)
-
-    def reset_with_initial_state(
-        self,
-        x_0: float,
-        theta_0: float,
+        pole_mass_scale: float = 1.0,
+        b_cart: float = 0.0,
+        b_pole: float = 0.0,
+        delay_steps: int = 0,
+        noise_channels: Optional[Sequence[int]] = None,
         seed: Optional[int] = None,
-    ) -> Tuple[np.ndarray, Dict[str, Any]]:
-        """Reset environment to exact initial state [x_0, 0.0, theta_0, 0.0]."""
-        super().reset(seed=seed)
-        wrapped_th = ((float(theta_0) + np.pi) % (2.0 * np.pi)) - np.pi
-        self._state = np.array([float(x_0), 0.0, wrapped_th, 0.0], dtype=np.float64)
-        self._step_count = 0
-        self.boundary_violated = False
-
-        if seed is not None:
-            self._rng = np.random.default_rng(seed)
-
-        obs = self._get_obs()
-        if self.obs_noise_sigma > 0.0:
-            noise = self._rng.normal(0.0, self.obs_noise_sigma, size=obs.shape).astype(np.float32)
-            obs = obs + noise
-
-        return obs, {}
-
-    def step(self, action: Any) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
-        obs, reward, terminated, truncated, info = super().step(action)
-        if abs(self._state[0]) >= self.X_THRESHOLD:
-            self.boundary_violated = True
-
-        if self.obs_noise_sigma > 0.0:
-            noise = self._rng.normal(0.0, self.obs_noise_sigma, size=obs.shape).astype(np.float32)
-            obs = obs + noise
-
-        return obs, reward, terminated, truncated, info
+    ) -> None:
+        super().__init__(
+            max_steps=max_steps,
+            continuous=continuous,
+            cart_mass=1.0 * float(cart_mass_scale),
+            pole_mass=0.1 * float(pole_mass_scale),
+            b_cart=float(b_cart),
+            b_pole=float(b_pole),
+            obs_noise_sigma=float(obs_noise_sigma),
+            delay_steps=int(delay_steps),
+            noise_channels=noise_channels,
+            seed=seed,
+        )
+        self.cart_mass_scale = float(cart_mass_scale)
+        self.pole_mass_scale = float(pole_mass_scale)
 
 
 # ── Initial Condition Grid Generator ─────────────────────────────────────────
@@ -339,6 +326,12 @@ def evaluate_controller(
     steady_state_window: int = 200,
     cart_mass_scale: float = 1.0,
     obs_noise_sigma: float = 0.0,
+    pole_mass_scale: float = 1.0,
+    b_cart: float = 0.0,
+    b_pole: float = 0.0,
+    delay_steps: int = 0,
+    config_hash: Optional[str] = None,
+    split: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Evaluate a single controller across initial conditions with perturbation options.
 
@@ -349,21 +342,32 @@ def evaluate_controller(
         steady_state_window: Steps from episode end to evaluate steady-state jitter RMS.
         cart_mass_scale: Cart mass multiplier (1.0 nominal, 1.3 for +30% perturbation).
         obs_noise_sigma: Gaussian noise standard deviation added to observations.
+        pole_mass_scale: Pole mass multiplier (1.0 nominal).
+        b_cart: Cart viscous friction coefficient (N*s/m).
+        b_pole: Pole joint rotational friction coefficient (N*m*s/rad).
+        delay_steps: Discrete actuator transport delay steps.
+        config_hash: SHA-256 hash of the governing perturbation configuration.
+        split: Declared split partition name ('training', 'validation', 'test').
 
     Returns:
-        Dict with aggregated performance, stability, and complexity metrics.
+        Dict with aggregated performance, stability, complexity metrics, and episode provenance.
     """
     env = BenchmarkCartPoleEnv(
         max_steps=max_steps,
         continuous=True,
         cart_mass_scale=cart_mass_scale,
         obs_noise_sigma=obs_noise_sigma,
+        pole_mass_scale=pole_mass_scale,
+        b_cart=b_cart,
+        b_pole=b_pole,
+        delay_steps=delay_steps,
     )
 
     episode_rewards: List[float] = []
     boundary_violations: int = 0
     stable_thetas_deg: List[float] = []
     stable_episode_count: int = 0
+    episode_provenance: List[Dict[str, Any]] = []
 
     for seed, (x_0, theta_0) in initial_conditions.items():
         obs, _ = env.reset_with_initial_state(x_0=x_0, theta_0=theta_0, seed=seed)
@@ -381,6 +385,14 @@ def evaluate_controller(
             step += 1
 
         episode_rewards.append(tot_reward)
+        sampled_params = dict(getattr(env, "_last_sampled_params", {}))
+        episode_provenance.append({
+            "seed": seed,
+            "sampled_params": sampled_params,
+            "steps": step,
+            "reward": round(tot_reward, 2),
+            "boundary_violated": bool(env.boundary_violated or abs(env._state[0]) >= env.X_THRESHOLD),
+        })
 
         if env.boundary_violated or abs(env._state[0]) >= env.X_THRESHOLD:
             boundary_violations += 1
@@ -413,6 +425,13 @@ def evaluate_controller(
         "stable_episodes": stable_episode_count,
         "cart_mass_scale": cart_mass_scale,
         "obs_noise_sigma": obs_noise_sigma,
+        "pole_mass_scale": pole_mass_scale,
+        "b_cart": b_cart,
+        "b_pole": b_pole,
+        "delay_steps": delay_steps,
+        "config_hash": config_hash or "N/A",
+        "split": split or "unspecified",
+        "episode_provenance": episode_provenance,
     }
 
 
@@ -427,11 +446,24 @@ def run_benchmark_suite(
     max_steps: int = 500,
     csv_filename: str = "baseline_comparison.csv",
     report_filename: str = "final_evaluation_report.md",
+    perturbation_config_path: str = "config/perturbations.yaml",
     verbose: bool = True,
 ) -> Dict[str, List[Dict[str, Any]]]:
     """Execute the benchmark suite on three controllers across 100 seeds with perturbation tests."""
+    # ── Load and validate perturbation configuration suite ───────────────────
+    suite = load_perturbation_suite(perturbation_config_path)
+
     if seeds is None:
-        seeds = list(range(1000, 1000 + num_episodes))
+        seeds = suite.get_split_seeds("test")[:num_episodes]
+
+    # Validate seed protocol: Supplementary final test suite (2000..2099) must never be run here
+    final_test_range = suite.splits.get("supplementary_untouched_test", {}).get("seed_range", [2000, 2099])
+    for s in seeds:
+        if final_test_range[0] <= s <= final_test_range[1]:
+            raise PerturbationConfigError(
+                f"Seed {s} belongs to supplementary untouched final test split "
+                f"[{final_test_range[0]}..{final_test_range[1]}]. Access denied during development/benchmarking."
+            )
 
     os.makedirs(results_dir, exist_ok=True)
     seen_fingerprints: Dict[str, str] = {}
@@ -515,7 +547,15 @@ def run_benchmark_suite(
     for ctrl in core_controllers_task_a:
         if verbose:
             print(f"  Evaluating {ctrl.name:<20} ...", end="", flush=True)
-        res = evaluate_controller(ctrl, grid_task_a, max_steps=max_steps, cart_mass_scale=1.0, obs_noise_sigma=0.0)
+        res = evaluate_controller(
+            ctrl,
+            grid_task_a,
+            max_steps=max_steps,
+            cart_mass_scale=1.0,
+            obs_noise_sigma=0.0,
+            config_hash=suite.config_hash,
+            split="test",
+        )
         res["task"] = "Task A (Balancing) - Nominal"
         results_nominal_a.append(res)
         if verbose:
@@ -531,7 +571,15 @@ def run_benchmark_suite(
     for ctrl in core_controllers_task_b:
         if verbose:
             print(f"  Evaluating {ctrl.name:<20} ...", end="", flush=True)
-        res = evaluate_controller(ctrl, grid_task_b, max_steps=max_steps, cart_mass_scale=1.0, obs_noise_sigma=0.0)
+        res = evaluate_controller(
+            ctrl,
+            grid_task_b,
+            max_steps=max_steps,
+            cart_mass_scale=1.0,
+            obs_noise_sigma=0.0,
+            config_hash=suite.config_hash,
+            split="test",
+        )
         res["task"] = "Task B (Swing-Up) - Nominal"
         results_nominal_b.append(res)
         if verbose:
@@ -549,7 +597,15 @@ def run_benchmark_suite(
     for ctrl in core_controllers_task_a:
         if verbose:
             print(f"  Evaluating {ctrl.name:<20} ...", end="", flush=True)
-        res = evaluate_controller(ctrl, grid_task_a, max_steps=max_steps, cart_mass_scale=1.3, obs_noise_sigma=0.05)
+        res = evaluate_controller(
+            ctrl,
+            grid_task_a,
+            max_steps=max_steps,
+            cart_mass_scale=1.3,
+            obs_noise_sigma=0.05,
+            config_hash=suite.config_hash,
+            split="test",
+        )
         res["task"] = "Task A (Balancing) - Perturbed"
         results_perturbed_a.append(res)
         if verbose:
@@ -563,7 +619,15 @@ def run_benchmark_suite(
     for ctrl in core_controllers_task_b:
         if verbose:
             print(f"  Evaluating {ctrl.name:<20} ...", end="", flush=True)
-        res = evaluate_controller(ctrl, grid_task_b, max_steps=max_steps, cart_mass_scale=1.3, obs_noise_sigma=0.05)
+        res = evaluate_controller(
+            ctrl,
+            grid_task_b,
+            max_steps=max_steps,
+            cart_mass_scale=1.3,
+            obs_noise_sigma=0.05,
+            config_hash=suite.config_hash,
+            split="test",
+        )
         res["task"] = "Task B (Swing-Up) - Perturbed"
         results_perturbed_b.append(res)
         if verbose:
@@ -589,9 +653,10 @@ def run_benchmark_suite(
         "obs_noise_sigma",
         "total_episodes",
         "stable_episodes",
+        "config_hash",
     ]
     with open(csv_path, "w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=csv_fields)
+        writer = csv.DictWriter(fh, fieldnames=csv_fields, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(all_results)
 

@@ -27,6 +27,12 @@ if _PROJECT_ROOT not in sys.path:
 import neat
 from env.cartpole_swingup import CartPoleSwingUpEnv
 from baselines.hybrid_controller import EnergyShapingLinearFeedbackController
+from utils.perturbation_loader import (
+    PerturbedCartPoleEnv,
+    load_perturbation_suite,
+    PerturbationSuite,
+    PerturbationConfigError,
+)
 
 try:
     GIT_REV = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=_PROJECT_ROOT).decode("ascii").strip()
@@ -56,7 +62,28 @@ class TinyNet(nn.Module):
         return out
 
 
-def evaluate_on_seeds(model: TinyNet, seeds: list[int], max_steps: int = 500) -> tuple[int, int, float]:
+def evaluate_on_seeds(
+    model: TinyNet,
+    seeds: list[int],
+    max_steps: int = 500,
+    suite: Optional[PerturbationSuite] = None,
+    split: Optional[str] = None,
+) -> tuple[int, int, float]:
+    """Evaluate a neural controller on designated seeds using PerturbedCartPoleEnv.
+
+    Enforces split isolation: forbidden from evaluating on supplementary final test seeds (2000..2099).
+    """
+    if suite is None:
+        suite = load_perturbation_suite("config/perturbations.yaml")
+
+    final_test_range = suite.splits.get("supplementary_untouched_test", {}).get("seed_range", [2000, 2099])
+    for s in seeds:
+        if final_test_range[0] <= s <= final_test_range[1]:
+            raise PerturbationConfigError(
+                f"Seed {s} belongs to supplementary untouched final test split "
+                f"[{final_test_range[0]}..{final_test_range[1]}]. Access denied during development/tuning."
+            )
+
     model.eval()
     successes = 0
     rail_hits = 0
@@ -64,7 +91,7 @@ def evaluate_on_seeds(model: TinyNet, seeds: list[int], max_steps: int = 500) ->
 
     with torch.no_grad():
         for s in seeds:
-            env = CartPoleSwingUpEnv(max_steps=max_steps, continuous=True)
+            env = PerturbedCartPoleEnv(max_steps=max_steps, continuous=True, seed=s)
             obs, _ = env.reset(seed=s)
             cos_thetas = []
             rail = False
@@ -95,7 +122,15 @@ def evaluate_on_seeds(model: TinyNet, seeds: list[int], max_steps: int = 500) ->
     return successes, rail_hits, median_steps
 
 
-def train_and_evaluate(hidden_dim: int, seed: int = 42) -> dict:
+def train_and_evaluate(
+    hidden_dim: int,
+    seed: int = 42,
+    config_path: str = "config/perturbations.yaml",
+    eval_split: str = "validation",
+) -> dict:
+    """Train TinyNet via DAgger on disjoint training seeds and evaluate on validation seeds."""
+    suite = load_perturbation_suite(config_path)
+
     torch.manual_seed(seed)
     np.random.seed(seed)
 
@@ -104,10 +139,13 @@ def train_and_evaluate(hidden_dim: int, seed: int = 42) -> dict:
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     # Initial data from disjoint training seeds (0..20)
+    train_seeds = suite.get_split_seeds("training")
+    init_seeds = train_seeds[:20]
+
     all_X = []
     all_Y = []
-    for s in range(20):
-        env = CartPoleSwingUpEnv(max_steps=500, continuous=True)
+    for s in init_seeds:
+        env = PerturbedCartPoleEnv(max_steps=500, continuous=True, seed=s)
         obs, _ = env.reset(seed=s)
         for _ in range(500):
             a = teacher.compute_action(obs)
@@ -117,7 +155,7 @@ def train_and_evaluate(hidden_dim: int, seed: int = 42) -> dict:
             if term:
                 break
 
-    # DAgger iterations over training seeds 20..199
+    # DAgger iterations over training seeds 20..139
     for dagger_iter in range(6):
         X_t = torch.tensor(np.array(all_X), dtype=torch.float32)
         Y_t = torch.tensor(np.array(all_Y).reshape(-1, 1), dtype=torch.float32)
@@ -137,9 +175,10 @@ def train_and_evaluate(hidden_dim: int, seed: int = 42) -> dict:
         model.eval()
         new_X = []
         new_Y = []
-        batch_train_seeds = list(range(20 + dagger_iter * 20, 40 + dagger_iter * 20))
+        start_idx = 20 + dagger_iter * 20
+        batch_train_seeds = train_seeds[start_idx : start_idx + 20]
         for s in batch_train_seeds:
-            env = CartPoleSwingUpEnv(max_steps=500, continuous=True)
+            env = PerturbedCartPoleEnv(max_steps=500, continuous=True, seed=s)
             obs, _ = env.reset(seed=s)
             for _ in range(500):
                 teacher_a = teacher.compute_action(obs)
@@ -155,8 +194,9 @@ def train_and_evaluate(hidden_dim: int, seed: int = 42) -> dict:
         all_X.extend(new_X)
         all_Y.extend(new_Y)
 
-    # Evaluate on strictly disjoint evaluation seeds (1000..1099)
-    succ, rail, med_steps = evaluate_on_seeds(model, list(range(1000, 1100)))
+    # Evaluate on strictly disjoint evaluation seeds (defaults to validation split)
+    eval_seeds = suite.get_split_seeds(eval_split)
+    succ, rail, med_steps = evaluate_on_seeds(model, eval_seeds, suite=suite, split=eval_split)
 
     # Extract weights
     w1 = model.fc1.weight.detach().cpu().numpy()
@@ -165,7 +205,7 @@ def train_and_evaluate(hidden_dim: int, seed: int = 42) -> dict:
     b2 = model.fc2.bias.detach().cpu().numpy()
 
     num_params = 5 * hidden_dim + hidden_dim + hidden_dim * 1 + 1
-    config_hash = hashlib.sha256(f"H={hidden_dim}_params={num_params}_seed={seed}_git={GIT_REV}".encode()).hexdigest()[:16]
+    config_hash = suite.config_hash
 
     return {
         "hidden_dim": hidden_dim,
@@ -177,6 +217,7 @@ def train_and_evaluate(hidden_dim: int, seed: int = 42) -> dict:
         "seed": seed,
         "config_hash": config_hash,
         "git_rev": GIT_REV,
+        "eval_split": eval_split,
         "eval_success": succ,
         "eval_rail": rail,
         "eval_median_steps": med_steps,
