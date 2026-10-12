@@ -1,0 +1,146 @@
+# ==============================================================================
+# EvoEdge Experimental Perturbation Distribution Specification
+# ==============================================================================
+# Declares explicit physical perturbation distributions across data splits:
+#   - Training split:   seeds 0..199
+#   - Validation split: seeds 200..399
+#   - Test split:       seeds 1000..1099
+#
+# Rule: Test distribution strictly extends beyond the training distribution
+# for all physical dimensions, evaluating true out-of-distribution generalization.
+# ==============================================================================
+
+version: "1.0"
+environment: "CartPoleSwingUpEnv"
+
+splits:
+  training:
+    seed_range: [0, 199]
+    purpose: "Controller optimization and training rollouts"
+  validation:
+    seed_range: [200, 399]
+    purpose: "Hyperparameter tuning, early stopping, and hypothesis diagnosis"
+  test:
+    seed_range: [1000, 1099]
+    purpose: "Final frozen benchmark reporting (strictly held-out)"
+
+perturbations:
+  pole_mass:
+    variable_name: "MASS_POLE"
+    units: "kg"
+    nominal_value: 0.10
+    training:
+      distribution: "uniform"
+      range: [0.08, 0.12]
+      description: "Nominal +/- 20% variation"
+    validation:
+      distribution: "uniform"
+      range: [0.07, 0.13]
+      description: "Nominal +/- 30% variation"
+    test:
+      distribution: "fixed_and_uniform"
+      benchmark_fixed: 0.13
+      range: [0.05, 0.15]
+      rationale: "+30% benchmark condition (0.13 kg) tests heavy-pole load outside [0.08, 0.12] train bounds"
+
+  cart_mass:
+    variable_name: "MASS_CART"
+    units: "kg"
+    nominal_value: 1.00
+    training:
+      distribution: "uniform"
+      range: [0.85, 1.20]
+      description: "Nominal +20% / -15% variation"
+    validation:
+      distribution: "uniform"
+      range: [0.80, 1.30]
+      description: "Nominal +30% / -20% variation"
+    test:
+      distribution: "fixed_and_uniform"
+      benchmark_fixed: 1.30
+      range: [0.70, 1.45]
+      rationale: "+30% benchmark condition (1.30 kg) tests heavy-cart inertia beyond training envelope"
+
+  cart_friction:
+    variable_name: "b_cart"
+    units: "N*s/m"
+    nominal_value: 0.00
+    training:
+      distribution: "uniform"
+      range: [0.00, 0.25]
+      description: "Light to moderate rail viscous drag"
+    validation:
+      distribution: "uniform"
+      range: [0.00, 0.40]
+      description: "Moderate to high drag"
+    test:
+      distribution: "fixed"
+      benchmark_fixed: 0.50
+      rationale: "High viscous damping (0.50 N*s/m) tests energy injection starvation beyond 0.25 train limit"
+
+  joint_friction:
+    variable_name: "b_pole"
+    units: "N*m*s/rad"
+    nominal_value: 0.00
+    training:
+      distribution: "uniform"
+      range: [0.00, 0.005]
+      description: "Minimal rotational joint friction"
+    validation:
+      distribution: "uniform"
+      range: [0.00, 0.008]
+      description: "Moderate rotational joint friction"
+    test:
+      distribution: "fixed"
+      benchmark_fixed: 0.010
+      rationale: "Joint friction 0.010 N*m*s/rad doubles max training drag, assessing pendulum stall"
+
+  observation_noise:
+    variable_name: "obs_noise_sigma"
+    units: "standard deviation (Gaussian)"
+    nominal_value: 0.00
+    target_channels:
+      - index: 0
+        name: "x"
+        units: "m"
+      - index: 1
+        name: "x_dot"
+        units: "m/s"
+      - index: 2
+        name: "cos_theta"
+        units: "unitless"
+      - index: 3
+        name: "sin_theta"
+        units: "unitless"
+      - index: 4
+        name: "theta_dot"
+        units: "rad/s"
+    training:
+      distribution: "uniform"
+      range: [0.00, 0.02]
+      description: "Low-amplitude sensor noise"
+    validation:
+      distribution: "uniform"
+      range: [0.00, 0.04]
+      description: "Medium-amplitude sensor noise"
+    test:
+      distribution: "fixed"
+      benchmark_fixed: 0.05
+      rationale: "Stress noise sigma = 0.05 is 2.5x max training noise, testing tanh saturation filtering"
+
+  actuator_delay:
+    variable_name: "delay_steps"
+    units: "discrete control steps (dt = 0.02s)"
+    nominal_value: 0
+    training:
+      distribution: "discrete"
+      values: [0]
+      description: "Zero-latency ideal actuation during nominal training"
+    validation:
+      distribution: "discrete"
+      values: [0, 1]
+      description: "1-step delay (20 ms) validation"
+    test:
+      distribution: "discrete"
+      values: [1, 2]
+      rationale: "1-step (20 ms) and 2-step (40 ms) delay test phase lag and limit-cycle emergence"
