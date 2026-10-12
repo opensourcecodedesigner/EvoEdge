@@ -1,16 +1,19 @@
 # ==============================================================================
-# EvoEdge Experimental Perturbation Distribution Specification
+# EvoEdge Experimental Perturbation Distribution Specification (v2.0)
 # ==============================================================================
-# Declares explicit physical perturbation distributions across data splits:
+# Resolves experimental split leakage and defines strict partition boundaries:
 #   - Training split:   seeds 0..199
 #   - Validation split: seeds 200..399
-#   - Test split:       seeds 1000..1099
+#   - Final Test split: seeds 1000..1099
 #
-# Rule: Test distribution strictly extends beyond the training distribution
-# for all physical dimensions, evaluating true out-of-distribution generalization.
+# Critical Repair in v2.0:
+#   In v1.0, validation ranges for pole mass [0.07, 0.13] and cart mass [0.80, 1.30]
+#   contained the exact fixed test benchmarks (0.13 kg and 1.30 kg).
+#   v2.0 strictly bounds the validation distribution so that final benchmark
+#   conditions cannot influence model selection, tuning, or hypothesis evaluation.
 # ==============================================================================
 
-version: "1.0"
+version: "2.0"
 environment: "CartPoleSwingUpEnv"
 
 splits:
@@ -19,10 +22,10 @@ splits:
     purpose: "Controller optimization and training rollouts"
   validation:
     seed_range: [200, 399]
-    purpose: "Hyperparameter tuning, early stopping, and hypothesis diagnosis"
+    purpose: "Hyperparameter tuning, early stopping, and failure diagnosis"
   test:
     seed_range: [1000, 1099]
-    purpose: "Final frozen benchmark reporting (strictly held-out)"
+    purpose: "Frozen final benchmark evaluation and publication reporting"
 
 perturbations:
   pole_mass:
@@ -35,13 +38,13 @@ perturbations:
       description: "Nominal +/- 20% variation"
     validation:
       distribution: "uniform"
-      range: [0.07, 0.13]
-      description: "Nominal +/- 30% variation"
+      range: [0.075, 0.125]
+      description: "Moderate +/- 25% variation (strictly excludes 0.13 kg test benchmark)"
     test:
       distribution: "fixed_and_uniform"
       benchmark_fixed: 0.13
       range: [0.05, 0.15]
-      rationale: "+30% benchmark condition (0.13 kg) tests heavy-pole load outside [0.08, 0.12] train bounds"
+      rationale: "+30% benchmark condition (0.13 kg) tests heavy-pole load strictly outside [0.08, 0.12] train bounds and [0.075, 0.125] val bounds"
 
   cart_mass:
     variable_name: "MASS_CART"
@@ -53,13 +56,13 @@ perturbations:
       description: "Nominal +20% / -15% variation"
     validation:
       distribution: "uniform"
-      range: [0.80, 1.30]
-      description: "Nominal +30% / -20% variation"
+      range: [0.80, 1.25]
+      description: "Moderate +25% / -20% variation (strictly excludes 1.30 kg test benchmark)"
     test:
       distribution: "fixed_and_uniform"
       benchmark_fixed: 1.30
       range: [0.70, 1.45]
-      rationale: "+30% benchmark condition (1.30 kg) tests heavy-cart inertia beyond training envelope"
+      rationale: "+30% benchmark condition (1.30 kg) tests heavy-cart inertia strictly beyond train [0.85, 1.20] and val [0.80, 1.25]"
 
   cart_friction:
     variable_name: "b_cart"
@@ -71,12 +74,12 @@ perturbations:
       description: "Light to moderate rail viscous drag"
     validation:
       distribution: "uniform"
-      range: [0.00, 0.40]
-      description: "Moderate to high drag"
+      range: [0.00, 0.35]
+      description: "Moderate drag (strictly excludes 0.50 N*s/m test benchmark)"
     test:
       distribution: "fixed"
       benchmark_fixed: 0.50
-      rationale: "High viscous damping (0.50 N*s/m) tests energy injection starvation beyond 0.25 train limit"
+      rationale: "High viscous damping (0.50 N*s/m) tests energy injection starvation strictly beyond 0.25 train limit and 0.35 val limit"
 
   joint_friction:
     variable_name: "b_pole"
@@ -88,12 +91,12 @@ perturbations:
       description: "Minimal rotational joint friction"
     validation:
       distribution: "uniform"
-      range: [0.00, 0.008]
-      description: "Moderate rotational joint friction"
+      range: [0.00, 0.0075]
+      description: "Moderate rotational joint friction (strictly excludes 0.010 N*m*s/rad test benchmark)"
     test:
       distribution: "fixed"
       benchmark_fixed: 0.010
-      rationale: "Joint friction 0.010 N*m*s/rad doubles max training drag, assessing pendulum stall"
+      rationale: "Joint friction 0.010 N*m*s/rad doubles max training drag, assessing pendulum stall strictly beyond val range"
 
   observation_noise:
     variable_name: "obs_noise_sigma"
@@ -121,12 +124,12 @@ perturbations:
       description: "Low-amplitude sensor noise"
     validation:
       distribution: "uniform"
-      range: [0.00, 0.04]
-      description: "Medium-amplitude sensor noise"
+      range: [0.00, 0.035]
+      description: "Medium-amplitude sensor noise (strictly excludes sigma = 0.05 test benchmark)"
     test:
       distribution: "fixed"
       benchmark_fixed: 0.05
-      rationale: "Stress noise sigma = 0.05 is 2.5x max training noise, testing tanh saturation filtering"
+      rationale: "Stress noise sigma = 0.05 is 2.5x max training noise, testing tanh saturation filtering strictly beyond val range"
 
   actuator_delay:
     variable_name: "delay_steps"
@@ -138,9 +141,9 @@ perturbations:
       description: "Zero-latency ideal actuation during nominal training"
     validation:
       distribution: "discrete"
-      values: [0, 1]
-      description: "1-step delay (20 ms) validation"
+      values: [0]
+      description: "Zero-latency validation during nominal model selection"
     test:
       distribution: "discrete"
       values: [1, 2]
-      rationale: "1-step (20 ms) and 2-step (40 ms) delay test phase lag and limit-cycle emergence"
+      rationale: "1-step (20 ms) and 2-step (40 ms) delay test phase lag and limit-cycle emergence strictly out-of-distribution"
