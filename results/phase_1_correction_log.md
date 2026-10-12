@@ -1,9 +1,9 @@
-# Phase 1 Correction Log: Evidence Correction and Integrity Gate
+# Phase 1 Correction Log: Final Closure Gate
 
 **Date:** October 12, 2026  
 **Auditor:** Lead Research Engineer  
-**Scope:** Phase 1 Evidence Audit, Split Repair, Validator Upgrade, and Gate Review  
-**Commit Baseline:** `19439c9`  
+**Scope:** Phase 1 Final Closure Gate — Exposure Audit, Operation Accounting, Causal Grounding, and Config Interface  
+**Commit Baseline:** `2ceacc9`  
 
 ---
 
@@ -11,25 +11,44 @@
 
 | Area / Task | What Changed | Rationale / Problem Corrected |
 |---|---|---|
-| **Task 1: Split Validator** | Completely rewrote `utils/split_integrity.py` with schema verification, variable/unit enforcement, OOD extension, validation isolation, and AST/regex static code leakage inspection. Created test suite `tests/test_split_integrity.py`. | Original validator only checked basic range numbers without verifying YAML syntax safety, physical units, or validation isolation, and falsely claimed code leakage verification without inspecting code. |
-| **Task 2: Split Design** | Updated `config/perturbations.yaml` to v2.0: tightened validation bounds for pole mass to $[0.075, 0.125]\text{ kg}$ (excluding $0.13\text{ kg}$) and cart mass to $[0.80, 1.25]\text{ kg}$ (excluding $1.30\text{ kg}$). Excluded $0.50\text{ N}\cdot\text{s/m}$, $0.010\text{ N}\cdot\text{m}\cdot\text{s/rad}$, and $\sigma=0.05$ from validation bounds. | Original v1.0 validation ranges contained the exact final benchmark test points (e.g. 0.13 kg and 1.30 kg), violating split isolation and risking benchmark-overfitting during model selection/tuning. |
-| **Task 3: Configuration Consumption** | Audited active evaluation scripts. Identified that `experiments/benchmark_suite.py` and `experiments/run_baselines_pruning.py` use **hardcoded dictionary parameters** rather than dynamically parsing `config/perturbations.yaml`. | Documented this discrepancy honestly. Physical parameter values match the YAML declarations, but automated dynamic pipeline consumption remains NOT IMPLEMENTED in Phase 1 (reserved for Phase 2). |
-| **Task 4: Causal Language in Failure Diagnosis** | Corrected claim that 1-step delay induces a fixed $\pi/2$ phase shift. Added frequency-dependent linear control analysis ($e^{-j\omega \tau}$ phase lag) and evaluated a 100-episode diagnostic sweep on validation seeds `200..299`. | A $20\text{ ms}$ delay produces frequency-dependent phase lag $\Delta \phi = -\omega \cdot 0.02\text{ rad}$. At the system natural frequency ($\omega_n \approx 4.4\text{ rad/s}$), phase lag is $\sim 5.1^\circ$; at limit cycle oscillation frequency ($\sim 15\text{ rad/s}$), phase lag reaches $\sim 17^\circ$. Generalizing 5 episodes to 100 was unfounded; 100-episode validation data now provides rigorous empirical support. |
-| **Task 5: Gate Statuses Audited** | Re-audited all Phase 1 gates into strictly supported categories: **PASS**, **FAIL**, or **NOT VERIFIED**. | Identified 2 items as **NOT VERIFIED** (Hardware ESP32 physical latency measurements, and automated consumption of `perturbations.yaml` by execution scripts), preventing ungrounded claims of completeness. |
+| **Task A: Perturbation Exposure Ledger** | Created `results/perturbation_exposure_ledger.csv`. Cataloged all 16 historical handoff conditions, 4 Phase 1 diagnostic conditions, and defined 6 genuinely unexposed final test conditions. Updated `config/perturbations.yaml` to v2.1. | Prevents declaring previously evaluated conditions (e.g. cart mass 1.30, delay 1-2 steps) as unseen OOD final tests. Formally distinguishes prior diagnostic exposure from future held-out evaluation. |
+| **Task B: Operation Accounting** | Created `metrics/ops_counter.py` and automated test suite `tests/test_ops_accounting.py`. Audited layer dimensions and counts against conventional dense implementations: 48 weight MACs / 57 params for $H=8$; 4,480 weight MACs / 4,609 params for $64\times 64$ MLP. Verified bias additions (9 vs 129) and activation evaluations (9 vs 129) separately. | Eliminates ambiguity in parameter and MAC metrics. Replaces ad-hoc proxy counters with standard deep learning arithmetic definitions while preserving exact tracking. |
+| **Task C: Causal Claims Audit** | Attached exact paths to episode-level trajectory and summary logs in `results/diagnostics/`. Qualified claims regarding delay phase lag and limit cycles; removed speculative claims of fixed $\pi/2$ phase shift and unverified bifurcation proofs. Grounded friction failure in energy starvation backed by empirical $\cos\theta \le 0.4135$ bounds. | Distinguishes measured empirical observations from theoretical hypotheses. Ensures all scientific statements are defensible from saved data. |
+| **Task D: Unified Perturbation Interface** | Implemented `utils/perturbation_loader.py` with schema validation, split seed verification, and episode parameter logging. Added unit test suite `tests/test_perturbation_loader.py`. Registered unmigrated runners (`experiments/benchmark_suite.py`, `runner.py`, `run_baselines_pruning.py`, `evolve_tinyml.py`). | Establishes a safe, unified configuration-loading interface for future experiments while preventing silent failures from unmigrated legacy runners. |
+| **Task E: Reporting and Remaining Gaps** | Updated `results/phase_1_report.md` with an operations table, exposure ledger summary, causal qualifications, and an explicit "Remaining NOT VERIFIED Items" section. | Delivers full transparency before Phase 2. Prevents overclaiming completeness on items requiring physical hardware or future execution. |
 
 ---
 
-## 2. Quantitative Verification of Diagnostic Sweeps (Validation Seeds 200..299)
+## 2. Quantitative Verification & Test Execution Log
 
-Diagnostic runs were strictly confined to **validation seeds `200..299`** under the 20-minute smoke test budget (actual run time: 4.2 seconds):
+All automated tests executed locally on Python 3.12:
 
-- **1-Step Delay ($20\text{ ms}$):**
-  - **Success Rate:** $0/100$ ($0.0\%$).
-  - **Rail Collision Rate:** $100/100$ ($100.0\%$).
-  - **Median Crash Step:** $196.0$ steps (range: $[189, 215]$).
-  - **Observed Behavior:** Upright balance achieved initially ($\cos\theta > 0.99$ by step $\sim 140$); unmodeled transport lag destabilizes high-gain balancing loop, exciting violent oscillations ($\Delta a \approx \pm 0.75$) that drive the cart into the rail.
-- **Friction ($b_c = 0.5\text{ N}\cdot\text{s/m}, b_p = 0.01\text{ N}\cdot\text{m}\cdot\text{s/rad}$):**
-  - **Success Rate:** $0/100$ ($0.0\%$).
-  - **Rail Collision Rate:** $0/100$ ($0.0\%$).
-  - **Mean Max $\cos\theta$:** $0.368$ (range: $[0.322, 0.413]$).
-  - **Observed Behavior:** Zero boundary violations; pendulum fails to reach upright equilibrium due to dissipative energy starvation ($P_{\text{loss}} = b_c \dot{x}^2 + b_p \dot{\theta}^2$).
+```powershell
+# 1. Baseline Test Suite (19 tests)
+python -m unittest test_baselines.py
+# Ran 19 tests in 1.656s - OK
+
+# 2. Split Integrity Suite (6 tests)
+python -m unittest tests/test_split_integrity.py
+# Ran 6 tests in 0.223s - OK
+
+# 3. Operation Accounting Suite (5 tests)
+python -m unittest tests/test_ops_accounting.py
+# Ran 5 tests in 0.002s - OK
+
+# 4. Perturbation Configuration Loader Suite (5 tests)
+python -m unittest tests/test_perturbation_loader.py
+# Ran 5 tests in 0.087s - OK
+```
+
+Total tests passing: **35 / 35 (100%)**.
+
+---
+
+## 3. Explicit Gate Status Summary
+
+- **Task A (Exposure Audit):** Complete (`results/perturbation_exposure_ledger.csv`, `config/perturbations.yaml` v2.1).
+- **Task B (Operation Accounting):** Complete (`metrics/ops_counter.py`, `tests/test_ops_accounting.py`).
+- **Task C (Causal Claims Audit):** Complete (grounded in `results/diagnostics/*.csv`, qualified in `results/phase_1_report.md`).
+- **Task D (Perturbation Loader):** Complete (`utils/perturbation_loader.py`, `tests/test_perturbation_loader.py`, unmigrated registry documented).
+- **Task E (Evidence Update & Stop):** Complete. Controller optimization and Phase 2 training held strictly frozen awaiting user authorization.

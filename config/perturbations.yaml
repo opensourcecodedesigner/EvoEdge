@@ -1,19 +1,22 @@
 # ==============================================================================
-# EvoEdge Experimental Perturbation Distribution Specification (v2.0)
+# EvoEdge Experimental Perturbation Distribution Specification (v2.1)
 # ==============================================================================
-# Resolves experimental split leakage and defines strict partition boundaries:
+# Resolves experimental split leakage, separates prior diagnostic exposures,
+# and declares the genuinely held-out, unexposed final test suite.
+#
+# Partitions:
 #   - Training split:   seeds 0..199
 #   - Validation split: seeds 200..399
 #   - Final Test split: seeds 1000..1099
 #
-# Critical Repair in v2.0:
-#   In v1.0, validation ranges for pole mass [0.07, 0.13] and cart mass [0.80, 1.30]
-#   contained the exact fixed test benchmarks (0.13 kg and 1.30 kg).
-#   v2.0 strictly bounds the validation distribution so that final benchmark
-#   conditions cannot influence model selection, tuning, or hypothesis evaluation.
+# Exposure Separation:
+#   Conditions tested during historical handoffs or Phase 1 failure diagnoses
+#   (cart_mass=1.30, pole_mass=0.13, friction 0.50/0.010, noise 0.05, delay 1 & 2)
+#   are formally cataloged as PREVIOUSLY_EXPOSED in results/perturbation_exposure_ledger.csv.
+#   A new GENUINELY UNEXPOSED final benchmark suite is defined below.
 # ==============================================================================
 
-version: "2.0"
+version: "2.1"
 environment: "CartPoleSwingUpEnv"
 
 splits:
@@ -39,12 +42,13 @@ perturbations:
     validation:
       distribution: "uniform"
       range: [0.075, 0.125]
-      description: "Moderate +/- 25% variation (strictly excludes 0.13 kg test benchmark)"
+      description: "Moderate +/- 25% variation (strictly excludes test benchmarks)"
     test:
       distribution: "fixed_and_uniform"
-      benchmark_fixed: 0.13
+      benchmark_fixed: 0.135
+      historical_exposed_fixed: 0.130
       range: [0.05, 0.15]
-      rationale: "+30% benchmark condition (0.13 kg) tests heavy-pole load strictly outside [0.08, 0.12] train bounds and [0.075, 0.125] val bounds"
+      rationale: "+35% benchmark condition (0.135 kg) is genuinely unexposed, strictly outside train [0.08, 0.12] and val [0.075, 0.125]"
 
   cart_mass:
     variable_name: "MASS_CART"
@@ -57,12 +61,13 @@ perturbations:
     validation:
       distribution: "uniform"
       range: [0.80, 1.25]
-      description: "Moderate +25% / -20% variation (strictly excludes 1.30 kg test benchmark)"
+      description: "Moderate +25% / -20% variation (strictly excludes test benchmarks)"
     test:
       distribution: "fixed_and_uniform"
-      benchmark_fixed: 1.30
+      benchmark_fixed: 1.35
+      historical_exposed_fixed: 1.30
       range: [0.70, 1.45]
-      rationale: "+30% benchmark condition (1.30 kg) tests heavy-cart inertia strictly beyond train [0.85, 1.20] and val [0.80, 1.25]"
+      rationale: "+35% benchmark condition (1.35 kg) is genuinely unexposed, strictly beyond train [0.85, 1.20] and val [0.80, 1.25]"
 
   cart_friction:
     variable_name: "b_cart"
@@ -75,11 +80,12 @@ perturbations:
     validation:
       distribution: "uniform"
       range: [0.00, 0.35]
-      description: "Moderate drag (strictly excludes 0.50 N*s/m test benchmark)"
+      description: "Moderate drag (strictly excludes test benchmarks)"
     test:
       distribution: "fixed"
-      benchmark_fixed: 0.50
-      rationale: "High viscous damping (0.50 N*s/m) tests energy injection starvation strictly beyond 0.25 train limit and 0.35 val limit"
+      benchmark_fixed: 0.45
+      historical_exposed_fixed: 0.50
+      rationale: "Unexposed viscous damping (0.45 N*s/m) tests energy injection starvation strictly beyond 0.25 train limit and 0.35 val limit"
 
   joint_friction:
     variable_name: "b_pole"
@@ -92,11 +98,12 @@ perturbations:
     validation:
       distribution: "uniform"
       range: [0.00, 0.0075]
-      description: "Moderate rotational joint friction (strictly excludes 0.010 N*m*s/rad test benchmark)"
+      description: "Moderate rotational joint friction (strictly excludes test benchmarks)"
     test:
       distribution: "fixed"
-      benchmark_fixed: 0.010
-      rationale: "Joint friction 0.010 N*m*s/rad doubles max training drag, assessing pendulum stall strictly beyond val range"
+      benchmark_fixed: 0.009
+      historical_exposed_fixed: 0.010
+      rationale: "Unexposed joint friction 0.009 N*m*s/rad tests rotational drag strictly beyond train and val limits"
 
   observation_noise:
     variable_name: "obs_noise_sigma"
@@ -125,11 +132,12 @@ perturbations:
     validation:
       distribution: "uniform"
       range: [0.00, 0.035]
-      description: "Medium-amplitude sensor noise (strictly excludes sigma = 0.05 test benchmark)"
+      description: "Medium-amplitude sensor noise (strictly excludes test benchmarks)"
     test:
       distribution: "fixed"
-      benchmark_fixed: 0.05
-      rationale: "Stress noise sigma = 0.05 is 2.5x max training noise, testing tanh saturation filtering strictly beyond val range"
+      benchmark_fixed: 0.045
+      historical_exposed_fixed: 0.050
+      rationale: "Unexposed stress noise sigma = 0.045 is strictly beyond train [0.00, 0.02] and val [0.00, 0.035]"
 
   actuator_delay:
     variable_name: "delay_steps"
@@ -145,5 +153,42 @@ perturbations:
       description: "Zero-latency validation during nominal model selection"
     test:
       distribution: "discrete"
-      values: [1, 2]
-      rationale: "1-step (20 ms) and 2-step (40 ms) delay test phase lag and limit-cycle emergence strictly out-of-distribution"
+      values: [3]
+      historical_exposed_values: [1, 2]
+      rationale: "3-step (60 ms) delay is genuinely unexposed, strictly out-of-distribution relative to train/val [0] and previously explored {1, 2}"
+
+# ── Prior Exposure & Unexposed Final Test Suites ──────────────────────────────
+exposure_catalog:
+  previously_exposed_suite:
+    description: "Conditions examined during historical handoffs or Phase 1 diagnoses. Ineligible for held-out post-Phase-2 final test."
+    conditions:
+      - name: "historical_heavy_cart"
+        params: { cart_mass: 1.30 }
+      - name: "historical_heavy_pole"
+        params: { pole_mass: 0.130 }
+      - name: "historical_friction"
+        params: { cart_friction: 0.50, joint_friction: 0.010 }
+      - name: "historical_noise"
+        params: { observation_noise: 0.050 }
+      - name: "historical_delay_1step"
+        params: { actuator_delay: 1 }
+      - name: "historical_delay_2step"
+        params: { actuator_delay: 2 }
+      - name: "historical_combined"
+        params: { pole_mass: 0.130, cart_mass: 1.30, cart_friction: 0.50, joint_friction: 0.010, observation_noise: 0.050, actuator_delay: 1 }
+
+  unexposed_final_test_suite:
+    description: "Genuinely unseen final evaluation suite. Must NOT be evaluated during Phase 1 or controller training/tuning."
+    conditions:
+      - name: "unexposed_heavy_cart"
+        params: { cart_mass: 1.35 }
+      - name: "unexposed_heavy_pole"
+        params: { pole_mass: 0.135 }
+      - name: "unexposed_friction"
+        params: { cart_friction: 0.45, joint_friction: 0.009 }
+      - name: "unexposed_noise"
+        params: { observation_noise: 0.045 }
+      - name: "unexposed_delay_3step"
+        params: { actuator_delay: 3 }
+      - name: "unexposed_combined"
+        params: { pole_mass: 0.135, cart_mass: 1.35, cart_friction: 0.45, joint_friction: 0.009, observation_noise: 0.045, actuator_delay: 3 }

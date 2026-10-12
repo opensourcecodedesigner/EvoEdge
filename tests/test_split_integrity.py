@@ -58,8 +58,9 @@ class TestSplitIntegrityValidator(unittest.TestCase):
     def test_validation_leakage_detected(self):
         """Validation range enclosing test benchmark must raise SplitIntegrityError."""
         cfg = yaml.safe_load(yaml.dump(self.valid_cfg))
-        # Enclose 0.13 kg test benchmark in validation
-        cfg["perturbations"]["pole_mass"]["validation"]["range"] = [0.07, 0.13]
+        bm_val = cfg["perturbations"]["pole_mass"]["test"]["benchmark_fixed"]
+        # Enclose test benchmark in validation
+        cfg["perturbations"]["pole_mass"]["validation"]["range"] = [0.07, bm_val]
         path = self._write_temp_cfg(cfg)
         try:
             with self.assertRaises(SplitIntegrityError) as ctx:
