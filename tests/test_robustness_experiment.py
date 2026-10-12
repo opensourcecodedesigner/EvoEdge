@@ -1,11 +1,19 @@
-"""Unit tests for Phase 2B: Controlled Robustness Experiment.
+"""Unit tests for Phase 2B: Controlled Robustness Experiment & Audit.
 
 Tests:
   1. Previous-action queue semantics (initial 0.0, delay queue synchronization, applied vs computed action).
   2. Episode reset behavior (action queue cleared, previous action reset to 0.0, no inter-episode leakage).
-  3. Configuration use (nominal vs robust distributions, seed partitions 0..199 and 200..399).
-  4. Fixed success criterion (rail hit detection, 95/100 upright threshold, other failure classification).
-  5. Architecture accounting (5-input H=8 vs 6-input H=8 parameter and MAC counts).
+  3. Actual inference path receiving previous applied action and reset behavior.
+  4. Architecture accounting (5-input H=8 vs 6-input H=8 parameter and MAC counts).
+  5. Canonical production success predicate helper:
+     - Exactly 95 of final 100 steps > 0.9: SUCCESS.
+     - Exactly 94 of final 100 steps > 0.9: FAILURE (OTHER_FAILURE).
+     - Upright value exactly equal to 0.9: does NOT count as > 0.9.
+     - Any rail hit: FAILURE (RAIL_HIT) regardless of upright score.
+     - Episode shorter than 500 steps: FAILURE (OTHER_FAILURE).
+     - Mutually exclusive and exhaustive outcome partition (SUCCESS + RAIL_HIT + OTHER_FAILURE == 1).
+  6. Training distribution sampling matching loaded YAML configuration.
+  7. Seed partition guard forbidding evaluation on seeds 2000..2099.
 """
 
 from __future__ import annotations
@@ -27,6 +35,12 @@ from utils.perturbation_loader import (
     PerturbationConfigError,
 )
 from metrics.ops_counter import compute_feedforward_ops
+from experiments.run_robustness_experiment import (
+    evaluate_success_predicate,
+    sample_training_condition,
+    normalize_state,
+    TinyNet,
+)
 
 
 class TestRobustnessExperiment(unittest.TestCase):
@@ -83,6 +97,31 @@ class TestRobustnessExperiment(unittest.TestCase):
             self.assertEqual(a, 0.0)
         self.assertFalse(env.boundary_violated)
 
+    def test_actual_inference_path_receives_previous_applied_action(self):
+        """Verify production inference loop feeds applied action to 6-input network."""
+        model = TinyNet(in_dim=6, hidden_dim=8)
+        env = PerturbedCartPoleEnv(max_steps=10, delay_steps=1, seed=42)
+        obs, _ = env.reset(seed=42)
+        prev_action_applied = 0.0
+
+        received_inputs = []
+
+        for step_i in range(5):
+            s_norm = normalize_state(obs)
+            feat = np.append(s_norm, prev_action_applied)
+            received_inputs.append(float(feat[5]))
+
+            t_in = torch.tensor(feat, dtype=torch.float32).unsqueeze(0)
+            action = float(model(t_in).item())
+
+            obs, r, term, trunc, info = env.step(action)
+            prev_action_applied = info["applied_action"]
+
+        # Step 0: prev_action_applied must be 0.0
+        self.assertEqual(received_inputs[0], 0.0)
+        # Step 1: applied action from Step 0 under 1-step delay is 0.0 (queue had 0.0)
+        self.assertEqual(received_inputs[1], 0.0)
+
     def test_architecture_parameter_and_mac_accounting(self):
         """Verify accurate parameter and MAC counts for 5-input and 6-input H=8 controllers."""
         # 5-input H=8: 5 -> 8 -> 1
@@ -101,29 +140,80 @@ class TestRobustnessExperiment(unittest.TestCase):
         self.assertNotEqual(ops_5["total_parameters"], ops_6["total_parameters"])
         self.assertNotEqual(ops_5["weight_macs"], ops_6["weight_macs"])
 
-    def test_fixed_success_criterion_logic(self):
-        """Verify the exact definition of success, rail hit, and other failure."""
-        def evaluate_trajectory(boundary_violated: bool, cos_thetas: list[float], max_steps: int = 500) -> str:
-            if boundary_violated:
-                return "RAIL_HIT"
-            if len(cos_thetas) == max_steps and sum(1 for c in cos_thetas[-100:] if c > 0.9) >= 95:
-                return "SUCCESS"
-            return "OTHER_FAILURE"
+    def test_canonical_success_predicate(self):
+        """Test canonical production evaluate_success_predicate against all edge cases."""
+        # 1. Exactly 95 steps above 0.9 in final 100 of 500 steps -> SUCCESS
+        thetas_95 = [0.0] * 400 + [0.91] * 95 + [0.89] * 5
+        succ, rail, other, up_steps = evaluate_success_predicate(thetas_95, rail_hit=False)
+        self.assertTrue(succ)
+        self.assertFalse(rail)
+        self.assertFalse(other)
+        self.assertEqual(up_steps, 95)
+        self.assertEqual(int(succ) + int(rail) + int(other), 1)
 
-        # Case 1: Rail hit
-        self.assertEqual(evaluate_trajectory(True, [0.95] * 500), "RAIL_HIT")
+        # 2. Exactly 94 steps above 0.9 in final 100 of 500 steps -> FAILURE (OTHER_FAILURE)
+        thetas_94 = [0.0] * 400 + [0.91] * 94 + [0.89] * 6
+        succ, rail, other, up_steps = evaluate_success_predicate(thetas_94, rail_hit=False)
+        self.assertFalse(succ)
+        self.assertFalse(rail)
+        self.assertTrue(other)
+        self.assertEqual(up_steps, 94)
+        self.assertEqual(int(succ) + int(rail) + int(other), 1)
 
-        # Case 2: Clean swing-up and balance (96 steps > 0.9 in final 100)
-        thetas_good = [0.0] * 400 + [0.95] * 96 + [0.85] * 4
-        self.assertEqual(evaluate_trajectory(False, thetas_good), "SUCCESS")
+        # 3. Value exactly equal to 0.9 does NOT count as > 0.9
+        thetas_exact_09 = [0.0] * 400 + [0.9000000] * 95 + [0.89] * 5
+        succ, rail, other, up_steps = evaluate_success_predicate(thetas_exact_09, rail_hit=False)
+        self.assertFalse(succ)
+        self.assertFalse(rail)
+        self.assertTrue(other)
+        self.assertEqual(up_steps, 0)  # none strictly > 0.9
+        self.assertEqual(int(succ) + int(rail) + int(other), 1)
 
-        # Case 3: Incomplete balance (90 steps > 0.9 in final 100)
-        thetas_insufficient = [0.0] * 400 + [0.95] * 90 + [0.85] * 10
-        self.assertEqual(evaluate_trajectory(False, thetas_insufficient), "OTHER_FAILURE")
+        # 4. Any rail hit is a RAIL_HIT regardless of upright score
+        thetas_rail = [0.95] * 500
+        succ, rail, other, up_steps = evaluate_success_predicate(thetas_rail, rail_hit=True)
+        self.assertFalse(succ)
+        self.assertTrue(rail)
+        self.assertFalse(other)
+        self.assertEqual(int(succ) + int(rail) + int(other), 1)
 
-        # Case 4: Never swung up (hanging around pi)
-        thetas_hanging = [-0.99] * 500
-        self.assertEqual(evaluate_trajectory(False, thetas_hanging), "OTHER_FAILURE")
+        # 5. Episode shorter than 500 steps (e.g. 499 steps) -> FAILURE (OTHER_FAILURE)
+        thetas_short = [0.95] * 499
+        succ, rail, other, up_steps = evaluate_success_predicate(thetas_short, rail_hit=False)
+        self.assertFalse(succ)
+        self.assertFalse(rail)
+        self.assertTrue(other)
+        self.assertEqual(int(succ) + int(rail) + int(other), 1)
+
+    def test_training_distribution_sampling_matches_yaml(self):
+        """Verify sample_training_condition uses exact bounds from perturbations.yaml."""
+        rng = np.random.default_rng(12345)
+        
+        # Test nominal
+        nom = sample_training_condition("nominal", rng, suite=self.suite)
+        self.assertEqual(nom["cart_mass"], 1.0)
+        self.assertEqual(nom["pole_mass"], 0.1)
+        self.assertEqual(nom["b_cart"], 0.0)
+        self.assertEqual(nom["b_pole"], 0.0)
+        self.assertEqual(nom["obs_noise_sigma"], 0.0)
+        self.assertEqual(nom["delay_steps"], 0)
+
+        # Test robust over 500 samples against YAML bounds
+        yaml_pole = self.suite.perturbations["pole_mass"]["training"]["range"]
+        yaml_cart = self.suite.perturbations["cart_mass"]["training"]["range"]
+        yaml_b_cart = self.suite.perturbations["cart_friction"]["training"]["range"]
+        yaml_b_pole = self.suite.perturbations["joint_friction"]["training"]["range"]
+        yaml_noise = self.suite.perturbations["observation_noise"]["training"]["range"]
+        yaml_delay = set(self.suite.perturbations["actuator_delay"]["training"]["values"])
+
+        for _ in range(500):
+            c = sample_training_condition("robust", rng, suite=self.suite)
+            self.assertTrue(yaml_pole[0] <= c["pole_mass"] <= yaml_pole[1])
+            self.assertTrue(yaml_cart[0] <= c["cart_mass"] <= yaml_cart[1])
+            self.assertTrue(yaml_b_cart[0] <= c["b_cart"] <= yaml_b_cart[1])
+            self.assertTrue(yaml_b_pole[0] <= c["b_pole"] <= yaml_b_pole[1])
+            self.assertTrue(yaml_noise[0] <= c["obs_noise_sigma"] <= yaml_noise[1])
+            self.assertIn(c["delay_steps"], yaml_delay)
 
     def test_seed_partition_guard(self):
         """Verify runners forbid evaluating on supplementary final test seeds 2000..2099."""

@@ -179,14 +179,15 @@ The historical frozen baseline completely collapses when even 1 step of actuator
 - **Cart Friction ($b_c = 0.50$):**
   - Robust training substantially improved resistance to cart friction. Arm A (nominal) achieved 20.0%, while Arm B achieved 54.0% and Arm D achieved 69.3%.
   - The teacher and trained networks inject sufficient kinetic energy via repeated cart strokes to achieve upright capture.
-- **Joint Friction ($b_p = 0.010$) and Combined Friction ($b_c=0.50, b_p=0.010$):**
-  - **Severe Regression in Robust Training:** Models trained under domain randomization (Arms B and D) experienced catastrophic failure on isolated joint friction ($0.0\%$ in Arm B, $0.7\%$ in Arm D), failing primarily via `other_failure` (timeout without reaching $\cos\theta > 0.9$).
-  - **Causal Analysis:** In the presence of joint damping ($b_p = 0.010$), the pole dissipates significant angular energy during every half-cycle. To overcome this, the cart must execute aggressive, wide-amplitude pumping strokes. When domain randomization penalizes rail collisions across wide parameter regimes, the policy learns conservative acceleration profiles (mean saturation fraction dropped to $0.05$--$0.08$, flipping frequency dropped from ~35 Hz to ~11 Hz). Consequently, the cart never pumps sufficient mechanical energy into the pendulum, and the pole stalls in a sub-critical limit cycle below the capture threshold.
-  - **The Exception:** Arm D seed 43 discovered an aggressive limit-cycle strategy that succeeded in **29/50 (58.0%)** episodes on Combined Friction (Condition 4c) and **33/50 (66.0%)** on Combined Historical Stress (Condition 7), where all other models (including the baseline at 0/50 and 2/50) failed.
+- **Joint Friction and Combined Friction Performance:**
+  - Arm A seed 43 (nominal training) achieved notable success on **4c_CombinedFriction** (48/50 successes, 96.0%) and **7_CombinedHistoricalStress** (13/50 successes, 26.0%), bringing Arm A's pooled combined-friction success to **48/150 (32.0%)** and combined-stress to **13/150 (8.7%)**.
+  - Arm D achieved pooled **29/150 (19.3%)** on Combined Friction (driven by seed 43's 29/50) and **33/150 (22.0%)** on Combined Historical Stress (driven by seed 43's 33/50).
+  - Consequently, Arm D is **not uniquely capable** of solving these combined conditions: Arm A seed 43 also solved both conditions. Rather, both Arm A and Arm D exhibit high run-to-run sensitivity where specific optimizer seeds discover viable pumping limit cycles while others fail.
+  - Across all robust 5-input models (Arm B), joint damping caused near-total stall (0/150 successes on 4b and 4c), failing via timeout (`other_failure`).
 
 ### 5.3 Sensor Noise Robustness (Condition 5, $\sigma = 0.05$)
 - Arm B (robust training, 5-in) achieved the highest noise resilience among trained models: **132/150 (88.0%)**, with seed 43 reaching 50/50 (100%).
-- Adding previous-action feedback (Arm D) slightly decreased noise resilience to 96/150 (64.0%), likely because the additional input channel provided another vector for state-estimation covariance perturbation.
+- Adding previous-action feedback (Arm D) yielded 96/150 (64.0%) pooled success, showing moderate noise resilience across all three seeds.
 
 ---
 
@@ -195,9 +196,9 @@ The historical frozen baseline completely collapses when even 1 step of actuator
 | Question | Controlled Comparison | Empirical Finding | Verdict |
 |---|---|---|---|
 | **Does Domain Randomization improve robustness?** | Arm A vs. Arm B (5-in)<br>Arm C vs. Arm D (6-in) | **Yes for Cart Mass, Pole Mass, Cart Friction, and Noise.** Arm B outperformed Arm A on nominal (79.3% vs 42.0%), mass variations (~80% vs ~40%), cart friction (54.0% vs 20.0%), and sensor noise (88.0% vs 54.0%).<br>**Severe Regression on Joint Friction.** Arm B scored 0.0% vs Arm A's 54.0%. | **Supported with Disclosed Trade-offs** |
-| **Does Previous-Action Feedback improve delay robustness?** | Arm B vs. Arm D ($d=2$)<br>Arm A vs. Arm C ($d=2$) | **Yes for 2-step delay under robust training.** On Condition 6b ($d=2$), Arm D achieved **49.3%** (74/150) vs Arm B's **6.0%** (9/150). Arm D cut rail collisions from 90 to 48.<br>Under nominal training, Arm C achieved 24.0% vs Arm A's 63.3% (due to seed 42 collapse). | **Supported under Robust Training** |
-| **Is the 6-input network worth the compute overhead?** | 57 params / 48 MACs<br>vs.<br>65 params / 56 MACs | The +8 parameter / +8 MAC (+14.0% ops proxy) cost is modest. Arm D was the **only** architecture capable of solving Combined Historical Stress (Condition 7: 22.0% pooled, up to 66% on seed 43) and Combined Friction (Condition 4c: 19.3% pooled, up to 58%), where the 5-input models completely failed (0%). | **Justified for Delay & Stress Scenarios** |
-| **Is run-to-run variation significant?** | Seeds 42, 43, 44 within arms | **Extremely significant.** Seed 42 in Arms A & C converged to a sub-optimal upright balance policy that achieved 0% on nominal due to slight terminal drift ($43/100$ steps upright instead of $\ge 95$). In contrast, seeds 43 and 44 achieved 82–100% nominal success. | **Critical Finding: Multiple Seeds Required** |
+| **Does Previous-Action Feedback improve delay robustness?** | Arm B vs. Arm D ($d=2$)<br>Arm A vs. Arm C ($d=2$) | **Yes for 2-step delay under robust training.** On Condition 6b ($d=2$), Arm D achieved **49.3%** (74/150) vs Arm B's **6.0%** (9/150). Arm D cut rail collisions from 90 to 48.<br>Under nominal training, Arm C achieved 24.0% vs Arm A's 63.3% (due to seed 42 collapse).<br>*Note: With N=3 runs per arm and high run-to-run variation, treat these findings as exploratory.* | **Observed Association (Exploratory)** |
+| **Is the 6-input network worth the compute overhead?** | 57 params / 48 MACs<br>vs.<br>65 params / 56 MACs | The +8 parameter / +8 MAC (+14.0% ops proxy) cost is modest. Arm D demonstrated improved delay compensation under robust training (49.3% vs 6.0%) and achieved 33/150 on Combined Stress. However, Arm A seed 43 also solved Combined Friction and Stress without the 6th input. | **Trade-off Dependent on Target Condition** |
+| **Is run-to-run variation significant?** | Seeds 42, 43, 44 within arms | **Extremely significant.** Seed 42 in Arms A & C converged to a sub-optimal upright balance policy that achieved 0% on nominal due to terminal drift. Standard deviations across runs range up to 55.4 percentage points. | **Critical Finding: Pooled Averages Hide Run Variance** |
 
 ---
 

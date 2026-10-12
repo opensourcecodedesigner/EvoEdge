@@ -98,18 +98,59 @@ def compute_wilson_ci(successes: int, total: int, confidence: float = 0.95) -> T
     return p_hat, lower, upper
 
 
+# ── Canonical Success Predicate Helper ────────────────────────────────────────
+
+
+def evaluate_success_predicate(
+    cos_thetas: List[float],
+    rail_hit: bool,
+    max_steps: int = 500,
+    required_upright_in_window: int = 95,
+    upright_threshold: float = 0.9,
+    window_size: int = 100,
+) -> Tuple[bool, bool, bool, int]:
+    """Canonical production predicate for episode success classification.
+
+    Fixed Success Definition:
+      - The cart never hits the rail (not rail_hit).
+      - Episode reached full length (len(cos_thetas) == max_steps).
+      - cos(theta) > upright_threshold strictly for at least required_upright_in_window
+        steps of the final window_size steps.
+
+    Returns:
+      (is_success, is_rail_hit, is_other_failure, upright_steps_in_window)
+      These three outcome categories are mutually exclusive and exhaustive:
+        is_success + is_rail_hit + is_other_failure == 1
+    """
+    if rail_hit:
+        return False, True, False, 0
+
+    if len(cos_thetas) < max_steps:
+        # Premature episode termination without explicit rail hit is an other_failure
+        return False, False, True, 0
+
+    final_window = cos_thetas[-window_size:]
+    upright_steps = sum(1 for c in final_window if c > upright_threshold)
+    is_success = (upright_steps >= required_upright_in_window)
+    is_other_fail = not is_success
+
+    return is_success, False, is_other_fail, upright_steps
+
+
 # ── Domain Randomization Sampling Helper ─────────────────────────────────────
 
 
-def sample_training_condition(mode: str, rng: np.random.Generator) -> Dict[str, float]:
+def sample_training_condition(
+    mode: str,
+    rng: np.random.Generator,
+    suite: Optional[PerturbationSuite] = None,
+) -> Dict[str, float]:
     """Sample physical condition for a training episode.
 
     Modes:
       'nominal': Cart mass 1.0 kg, pole mass 0.1 kg, friction 0, noise 0, delay 0.
-      'robust' : Domain randomization within declared training boundaries:
-                 cart_mass in [0.85, 1.25], pole_mass in [0.08, 0.125],
-                 b_cart in [0.0, 0.35], b_pole in [0.0, 0.007],
-                 obs_noise_sigma in [0.0, 0.035], delay_steps in {0, 1, 2}.
+      'robust' : Domain randomization within declared training boundaries in suite
+                 (or fallback to exact protocol bounds if suite not passed).
     """
     if mode == "nominal":
         return {
@@ -121,14 +162,32 @@ def sample_training_condition(mode: str, rng: np.random.Generator) -> Dict[str, 
             "delay_steps": 0,
         }
     elif mode == "robust":
-        return {
-            "cart_mass": float(rng.uniform(0.85, 1.25)),
-            "pole_mass": float(rng.uniform(0.08, 0.125)),
-            "b_cart": float(rng.uniform(0.0, 0.35)),
-            "b_pole": float(rng.uniform(0.0, 0.007)),
-            "obs_noise_sigma": float(rng.uniform(0.0, 0.035)),
-            "delay_steps": int(rng.choice([0, 1, 2])),
-        }
+        if suite is not None:
+            # Query bounds directly from validated YAML configuration
+            pole_r = suite.perturbations["pole_mass"]["training"]["range"]
+            cart_r = suite.perturbations["cart_mass"]["training"]["range"]
+            b_cart_r = suite.perturbations["cart_friction"]["training"]["range"]
+            b_pole_r = suite.perturbations["joint_friction"]["training"]["range"]
+            noise_r = suite.perturbations["observation_noise"]["training"]["range"]
+            delay_vals = suite.perturbations["actuator_delay"]["training"]["values"]
+            return {
+                "cart_mass": float(rng.uniform(cart_r[0], cart_r[1])),
+                "pole_mass": float(rng.uniform(pole_r[0], pole_r[1])),
+                "b_cart": float(rng.uniform(b_cart_r[0], b_cart_r[1])),
+                "b_pole": float(rng.uniform(b_pole_r[0], b_pole_r[1])),
+                "obs_noise_sigma": float(rng.uniform(noise_r[0], noise_r[1])),
+                "delay_steps": int(rng.choice(delay_vals)),
+            }
+        else:
+            # Reconstructed bounds from initial exploratory run
+            return {
+                "cart_mass": float(rng.uniform(0.85, 1.25)),
+                "pole_mass": float(rng.uniform(0.08, 0.125)),
+                "b_cart": float(rng.uniform(0.0, 0.35)),
+                "b_pole": float(rng.uniform(0.0, 0.007)),
+                "obs_noise_sigma": float(rng.uniform(0.0, 0.035)),
+                "delay_steps": int(rng.choice([0, 1, 2])),
+            }
     else:
         raise ValueError(f"Unknown training mode: {mode}")
 
@@ -166,7 +225,7 @@ def train_arm(
     # 1. Initial demonstration dataset (20 episodes from seeds 0..19)
     init_seeds = train_seeds[:20]
     for s in init_seeds:
-        cond = sample_training_condition(training_mode, np_rng)
+        cond = sample_training_condition(training_mode, np_rng, suite=suite)
         env = PerturbedCartPoleEnv(max_steps=500, continuous=True, seed=s, **cond)
         obs, _ = env.reset(seed=s)
         prev_action_applied = 0.0
@@ -213,7 +272,7 @@ def train_arm(
         batch_seeds = train_seeds[start_idx : start_idx + 20]
 
         for s in batch_seeds:
-            cond = sample_training_condition(training_mode, np_rng)
+            cond = sample_training_condition(training_mode, np_rng, suite=suite)
             env = PerturbedCartPoleEnv(max_steps=500, continuous=True, seed=s, **cond)
             obs, _ = env.reset(seed=s)
             prev_action_applied = 0.0
@@ -328,16 +387,21 @@ def evaluate_controller_on_condition(
                 failure_step = step_i + 1
                 break
 
-        # Fixed success criterion evaluation
-        final_window = cos_thetas[-100:] if len(cos_thetas) >= 100 else cos_thetas
-        upright_steps_in_window = sum(1 for c in final_window if c > 0.9)
-        is_success = (not rail_hit and len(cos_thetas) == max_steps and upright_steps_in_window >= 95)
+        # Fixed success criterion evaluation via canonical helper
+        is_success, is_rail_hit, is_other_fail, upright_steps_in_window = evaluate_success_predicate(
+            cos_thetas=cos_thetas,
+            rail_hit=rail_hit,
+            max_steps=max_steps,
+            required_upright_in_window=95,
+            upright_threshold=0.9,
+            window_size=100,
+        )
 
         if is_success:
             success_count += 1
             if first_upright is not None:
                 steps_to_upright_list.append(first_upright)
-        elif rail_hit:
+        elif is_rail_hit:
             rail_count += 1
         else:
             other_fail_count += 1
