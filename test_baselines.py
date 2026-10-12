@@ -275,5 +275,104 @@ class TestBenchmarkSuite(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(tmpdir, report_file)))
 
 
+class TestEnergyShapingLinearFeedbackController(unittest.TestCase):
+    """Test suite for baselines/hybrid_controller.py (Fix 1)."""
+
+    def test_true_lqr_computation(self):
+        """Verify continuous ARE Riccati solver produces K close to [-1.0, -1.21, -7.81, -1.87]."""
+        from baselines.hybrid_controller import compute_true_lqr_gains
+        K = compute_true_lqr_gains()
+        self.assertEqual(len(K), 4)
+        self.assertAlmostEqual(K[0], -1.00, places=2)
+        self.assertAlmostEqual(K[1], -1.21, places=2)
+        self.assertAlmostEqual(K[2], -7.81, places=2)
+        self.assertAlmostEqual(K[3], -1.87, places=2)
+
+    def test_pumping_sign(self):
+        """Verify pumping sign accelerates cart in direction assisting inverted pendulum."""
+        from baselines.hybrid_controller import EnergyShapingLinearFeedbackController
+        ctrl = EnergyShapingLinearFeedbackController(k_E=0.6, k_x=0.0, k_v=0.0)
+
+        # Inverted hanging (theta = pi, cos_th = -1.0, sin_th = 0.0), positive velocity
+        obs_pos = [0.0, 0.0, -1.0, 0.0, 0.5]
+        u_pos = ctrl.compute_action(obs_pos)
+        # E < 0, th_dot * cos_th = 0.5 * (-1) = -0.5 < 0
+        # sign_E = -1, sign_p = -1 -> sign_E * sign_p = +1 -> u = +0.6
+        self.assertAlmostEqual(u_pos, 0.6, places=4)
+
+        # Inverted hanging, negative velocity
+        obs_neg = [0.0, 0.0, -1.0, 0.0, -0.5]
+        u_neg = ctrl.compute_action(obs_neg)
+        # sign_E = -1, sign_p = +1 -> sign_E * sign_p = -1 -> u = -0.6
+        self.assertAlmostEqual(u_neg, -0.6, places=4)
+
+    def test_energy_increasing_during_pumping(self):
+        """Verify that mechanical energy strictly increases during pumping phase."""
+        from env.cartpole_swingup import CartPoleSwingUpEnv
+        from baselines.hybrid_controller import EnergyShapingLinearFeedbackController
+
+        env = CartPoleSwingUpEnv(max_steps=100, continuous=True)
+        obs, _ = env.reset(seed=1000)
+        ctrl = EnergyShapingLinearFeedbackController(k_E=0.6, k_x=0.5, k_v=0.25)
+
+        c_kin = (2.0 / 3.0) * env.MASS_POLE * (env.LENGTH ** 2)
+        c_pot = env.MASS_POLE * env.GRAVITY * env.LENGTH
+
+        def calc_energy(observation):
+            _, _, cos_th, _, th_dot = observation
+            return c_kin * (th_dot ** 2) + c_pot * (cos_th - 1.0)
+
+        initial_energy = calc_energy(obs)
+
+        energies = [initial_energy]
+        for _ in range(50):
+            a = ctrl.compute_action(obs)
+            obs, _, term, trunc, _ = env.step(a)
+            energies.append(calc_energy(obs))
+            if term:
+                break
+
+        # Energy must have pumped up significantly above initial hanging energy (-0.98 J)
+        max_energy = max(energies)
+        final_energy = energies[-1]
+        self.assertGreater(max_energy, initial_energy + 0.3, "Energy failed to pump up during pumping phase")
+        self.assertGreater(final_energy, initial_energy, "Final energy is not greater than initial energy")
+
+    def test_swingup_gate_100_percent(self):
+        """GATE: Swing-up success must be 100% over seeds 1000-1099."""
+        from env.cartpole_swingup import CartPoleSwingUpEnv
+        from baselines.hybrid_controller import EnergyShapingLinearFeedbackController
+
+        ctrl = EnergyShapingLinearFeedbackController(k_E=0.6, k_x=0.5, k_v=0.25)
+        successes = 0
+        total_seeds = 100
+
+        for s in range(1000, 1000 + total_seeds):
+            env = CartPoleSwingUpEnv(max_steps=500, continuous=True)
+            obs, _ = env.reset(seed=s)
+            cos_thetas = []
+            rail_hit = False
+
+            for _ in range(500):
+                a = ctrl.compute_action(obs)
+                obs, _, term, trunc, _ = env.step(a)
+                cos_thetas.append(obs[2])
+                if term:
+                    rail_hit = True
+                    break
+
+            if not rail_hit and len(cos_thetas) == 500:
+                final_100 = cos_thetas[-100:]
+                if sum(1 for c in final_100 if c > 0.9) >= 95:
+                    successes += 1
+
+        self.assertEqual(
+            successes,
+            total_seeds,
+            f"Fix 1 GATE failed: expected 100% success (100/{total_seeds}), got {successes}/{total_seeds}",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
+

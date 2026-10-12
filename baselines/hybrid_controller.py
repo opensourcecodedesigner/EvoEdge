@@ -1,58 +1,118 @@
-"""Hybrid Energy-Shaping and State-Feedback Balancing Controller.
+"""Energy-Shaping + Linear Feedback Balancing Controller.
 
 Combines an analytical nonlinear energy-shaping pumping controller for
-swing-up (|theta| >= 0.35 rad) with a linear state-feedback LQR balancing
-controller (|theta| < 0.35 rad).
+swing-up (|theta| >= 0.35 rad OR |theta_dot| >= 2.5 rad/s) with a linear state-feedback
+balancing controller (|theta| < 0.35 rad AND |theta_dot| < 2.5 rad/s).
 
 Key Properties:
-  - Exactly 6 gain parameters:
+  - Exactly 7 gain parameters:
       Balancing gains (4): K = [K_x, K_x_dot, K_theta, K_theta_dot]
-      Pumping gains (2):   k_E, k_x
-  - Exactly 6 Multiply-Accumulate (MAC) operations per step.
+      Pumping gains (3):   k_E, k_x, k_v
+  - Exactly 7 Multiply-Accumulate (MAC) operations per step.
   - Zero heap allocation (O(1) memory), 100% deterministic, MCU compatible.
 """
 
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 import numpy as np
 
 
-class HybridController:
+# True continuous-time LQR gain derived via solve_continuous_are with Q=diag(1, 0.1, 10, 0.1), R=1 (action units)
+TRUE_LQR_GAINS = np.array([-1.0000, -1.2138, -7.8073, -1.8677], dtype=np.float64)
+
+# Hand-tuned linear state feedback gains
+HAND_TUNED_LINEAR_GAINS = np.array([-0.80, -1.20, -35.00, -6.50], dtype=np.float64)
+
+
+def compute_true_lqr_gains(
+    mass_cart: float = 1.0,
+    mass_pole: float = 0.1,
+    length: float = 0.5,
+    gravity: float = 9.8,
+    force_mag: float = 10.0,
+    Q: Optional[np.ndarray] = None,
+    R: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """Compute true continuous-time LQR gain matrix K for CartPole linearized at upright.
+
+    Returns:
+        K vector such that u = -K s (in normalized action units where force = action * force_mag).
+    """
+    from scipy.linalg import solve_continuous_are
+
+    M = float(mass_cart)
+    m = float(mass_pole)
+    L = float(length)
+    g = float(gravity)
+    Mt = M + m
+    ml = m * L
+
+    denom = L * (4.0 / 3.0 - m / Mt)
+
+    A = np.zeros((4, 4), dtype=np.float64)
+    A[0, 1] = 1.0
+    A[1, 2] = -ml * g / (Mt * denom)
+    A[2, 3] = 1.0
+    A[3, 2] = g / denom
+
+    B_force = np.zeros((4, 1), dtype=np.float64)
+    B_force[1, 0] = 1.0 / Mt + ml / (Mt ** 2 * denom)
+    B_force[3, 0] = -1.0 / (Mt * denom)
+
+    B = B_force * float(force_mag)
+
+    if Q is None:
+        Q = np.diag([1.0, 0.1, 10.0, 0.1])
+    if R is None:
+        R = np.array([[1.0]])
+
+    P = solve_continuous_are(A, B, Q, R)
+    K = (np.linalg.inv(R) @ B.T @ P).flatten()
+    return K
+
+
+class EnergyShapingLinearFeedbackController:
     """Deterministic Dual-Regime Controller for CartPole Swing-Up & Balance.
+
+    Name: energy-shaping + linear feedback
 
     Regimes:
       1. Balancing Regime (|theta| < 0.35 rad AND |theta_dot| < 2.5 rad/s):
-         Linear state-feedback:
+         Linear feedback (hand-tuned) or true LQR:
            u = -(K_x * x + K_x_dot * x_dot + K_theta * theta + K_theta_dot * theta_dot)
          Clamped to [-1.0, 1.0].
 
       2. Pumping / Swing-Up Regime (|theta| >= 0.35 rad OR |theta_dot| >= 2.5 rad/s):
-         Mechanical energy error pumping with centering and velocity damping:
-           E = 0.5 * m * (L * theta_dot)^2 + m * g * L * (cos(theta) - 1.0)
-           E_0 = 0.0
-           u = k_E * (E - E_0) * sign(theta_dot * cos(theta)) - k_x * x - k_v * x_dot
+         Sign-based mechanical energy shaping with centering and velocity damping:
+           E = (2/3) * m * L^2 * theta_dot^2 + m * g * L * (cos(theta) - 1.0)
+           u = k_E * sign(E - E_0) * sign(theta_dot * cos(theta)) - k_x * x - k_v * x_dot
          Clamped to [-1.0, 1.0].
     """
 
     def __init__(
         self,
         K: Optional[Sequence[float]] = None,
-        k_E: float = 0.4,
-        k_x: float = 1.2,
-        k_v: float = 0.8,
+        k_E: float = 0.6,
+        k_x: float = 0.5,
+        k_v: float = 0.25,
         theta_threshold: float = 0.35,
         theta_dot_threshold: float = 2.5,
         mass_pole: float = 0.1,
         length: float = 0.5,
         gravity: float = 9.8,
+        use_true_lqr: bool = False,
     ) -> None:
-        # Default tuned balancing gains: K = [-0.8, -1.2, -35.0, -6.5]
-        if K is None:
-            self.K = np.array([-0.8, -1.2, -35.0, -6.5], dtype=np.float64)
-        else:
+        if K is not None:
             self.K = np.array(K, dtype=np.float64)
+            self.linear_type = "linear feedback (custom)"
+        elif use_true_lqr:
+            self.K = TRUE_LQR_GAINS.copy()
+            self.linear_type = "linear feedback (true LQR)"
+        else:
+            self.K = HAND_TUNED_LINEAR_GAINS.copy()
+            self.linear_type = "linear feedback (hand-tuned)"
 
         self.k_E = float(k_E)
         self.k_x = float(k_x)
@@ -66,12 +126,16 @@ class HybridController:
         self.gravity = float(gravity)
 
         # Precomputed constants
-        # 0.5 * m * L^2
-        self.c_kinetic = 0.5 * self.mass_pole * (self.length ** 2)
-        # m * g * L
+        # Corrected kinetic energy coefficient: (2/3) * m * L^2 = (2/3)*0.1*0.25 = 0.01666667
+        self.c_kinetic = (2.0 / 3.0) * self.mass_pole * (self.length ** 2)
+        # m * g * L = 0.1 * 9.8 * 0.5 = 0.4900
         self.c_potential = self.mass_pole * self.gravity * self.length
 
         self.current_regime: str = "PUMP"
+
+    @property
+    def name(self) -> str:
+        return "energy-shaping + linear feedback"
 
     @property
     def active_parameters(self) -> int:
@@ -92,7 +156,6 @@ class HybridController:
         arr = np.asarray(obs, dtype=np.float64).flatten()
         if len(arr) == 5:
             x, x_dot, cos_th, sin_th, th_dot = arr[0], arr[1], arr[2], arr[3], arr[4]
-            th = math.atan2(sin_th, cos_th)
             return float(x), float(x_dot), float(cos_th), float(sin_th), float(th_dot)
         elif len(arr) == 4:
             x, x_dot, th, th_dot = arr[0], arr[1], arr[2], arr[3]
@@ -119,7 +182,7 @@ class HybridController:
         x, x_dot, cos_th, sin_th, th_dot = self.extract_state(obs)
         theta = math.atan2(sin_th, cos_th)
 
-        # Dual-Condition Capture: switch to LQR balance ONLY when |theta| < 0.35 rad AND |theta_dot| < 2.5 rad/s
+        # Dual-Condition Capture: switch to linear balance ONLY when |theta| < 0.35 rad AND |theta_dot| < 2.5 rad/s
         if abs(theta) < self.theta_threshold and abs(th_dot) < self.theta_dot_threshold:
             self.current_regime = "BALANCE"
             # u = -(K_x * x + K_x_dot * x_dot + K_theta * theta + K_theta_dot * theta_dot)
@@ -127,12 +190,12 @@ class HybridController:
         else:
             self.current_regime = "PUMP"
             # Mechanical energy relative to upright equilibrium E_0 = 0.0:
-            # E = 0.5 * m * (L * theta_dot)^2 + m * g * L * (cos(theta) - 1.0)
-            # E_tilde = E - E_0 = E (negative below target)
+            # E = (2/3) * m * L^2 * th_dot^2 + m * g * L * (cos_th - 1.0)
             E = self.c_kinetic * (th_dot ** 2) + self.c_potential * (cos_th - 1.0)
+            sign_E = 1.0 if E > 0.0 else (-1.0 if E < 0.0 else 0.0)
             p = th_dot * cos_th
-            sign_dir = 1.0 if p > 0.0 else (-1.0 if p < 0.0 else 1.0)
-            u = self.k_E * E * sign_dir - self.k_x * x - self.k_v * x_dot
+            sign_p = 1.0 if p > 0.0 else (-1.0 if p < 0.0 else 1.0)
+            u = self.k_E * sign_E * sign_p - self.k_x * x - self.k_v * x_dot
 
         # Clamp u to [-1.0, 1.0]
         if u > 1.0:
@@ -144,7 +207,8 @@ class HybridController:
     def get_spec(self) -> Dict[str, Any]:
         """Format parameters cleanly for UI server and embedded documentation."""
         return {
-            "type": "HybridController",
+            "type": self.name,
+            "linear_feedback": self.linear_type,
             "active_parameters": 7,
             "theoretical_macs": 7,
             "regimes": {
@@ -160,8 +224,8 @@ class HybridController:
                 },
                 "pumping": {
                     "condition": f"|theta| >= {self.theta_threshold:.2f} rad OR |theta_dot| >= {self.theta_dot_threshold:.2f} rad/s",
-                    "formula": "u = k_E * (E - E_0) * sign(theta_dot * cos_theta) - k_x * x - k_v * x_dot",
-                    "energy_formula": "E = 0.5 * m * (L * theta_dot)^2 + m * g * L * (cos_theta - 1.0)",
+                    "formula": "u = k_E * sign(E - E_0) * sign(theta_dot * cos_theta) - k_x * x - k_v * x_dot",
+                    "energy_formula": "E = (2/3) * m * L^2 * theta_dot^2 + m * g * L * (cos_theta - 1.0)",
                     "gains": {
                         "k_E": round(float(self.k_E), 4),
                         "k_x": round(float(self.k_x), 4),
@@ -170,3 +234,7 @@ class HybridController:
                 },
             },
         }
+
+
+# Backwards compatibility alias
+HybridController = EnergyShapingLinearFeedbackController

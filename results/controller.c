@@ -1,5 +1,5 @@
 /* ========================================================================
- * CartPole Swing-Up & Balance — Dual-Regime Hybrid C Controller
+ * CartPole Swing-Up & Balance — Energy-Shaping + Linear Feedback C Controller
  * ======================================================================== */
 
 #include "controller.h"
@@ -27,14 +27,13 @@ float compute_cartpole_action(
     float u = 0.0f;
 
     /* 2. Dual-Regime Selection:
-     * Switch to LQR balance ONLY when |theta| < 0.35 rad AND |theta_dot| < 2.5 rad/s
+     * Switch to linear balance ONLY when |theta| < 0.35 rad AND |theta_dot| < 2.5 rad/s
      */
     if (abs_theta < HYBRID_THETA_THRESHOLD_RAD && abs_th_dot < HYBRID_THETA_DOT_THRESHOLD_RAD_S) {
         /*
          * --- Balancing Regime (|theta| < 0.35 rad AND |th_dot| < 2.5 rad/s) ---
-         * Full-state feedback (LQR):
+         * Full-state linear feedback:
          * u = -(K_x * x + K_x_dot * x_dot + K_theta * theta + K_theta_dot * th_dot)
-         * Gains: [-0.8, -1.2, -35.0, -6.5]
          */
         const float term_x      = HYBRID_K_X * x;
         const float term_x_dot  = HYBRID_K_X_DOT * x_dot;
@@ -45,21 +44,22 @@ float compute_cartpole_action(
     } else {
         /*
          * --- Pumping / Swing-Up Regime (|theta| >= 0.35 rad OR |th_dot| >= 2.5 rad/s) ---
-         * Mechanical energy-shaping:
-         *   c_kinetic   = 0.5 * m * L^2 = 0.5 * 0.1 * 0.25 = 0.0125
-         *   c_potential = m * g * L     = 0.1 * 9.8 * 0.5  = 0.4900
+         * Corrected mechanical energy-shaping:
+         *   c_kinetic   = (2/3) * m * L^2 = (2/3) * 0.1 * 0.25 = 0.016667
+         *   c_potential = m * g * L       = 0.1 * 9.8 * 0.5   = 0.4900
          *   E = c_kinetic * (th_dot^2) + c_potential * (cos_th - 1.0)
-         *   u = k_E * (E - E_0) * sign(th_dot * cos_th) - k_x * x - k_v * x_dot
+         *   u = k_E * sign(E - E_0) * sign(th_dot * cos_th) - k_x * x - k_v * x_dot
          */
-        const float c_kinetic = 0.0125f;
+        const float c_kinetic = 0.016667f;
         const float c_potential = 0.4900f;
 
         const float E = (c_kinetic * th_dot * th_dot) + (c_potential * (cos_th - 1.0f));
 
+        const float sign_E = (E > 0.0f) ? 1.0f : ((E < 0.0f) ? -1.0f : 0.0f);
         const float p = th_dot * cos_th;
-        const float sign_dir = (p > 0.0f) ? 1.0f : ((p < 0.0f) ? -1.0f : 1.0f);
+        const float sign_p = (p > 0.0f) ? 1.0f : ((p < 0.0f) ? -1.0f : 1.0f);
 
-        u = (HYBRID_K_E * E * sign_dir) - (HYBRID_K_CENT_X * x) - (HYBRID_K_CENT_V * x_dot);
+        u = (HYBRID_K_E * sign_E * sign_p) - (HYBRID_K_CENT_X * x) - (HYBRID_K_CENT_V * x_dot);
     }
 
     /* 3. Output saturation to track motor limit [-1.0, 1.0] */
