@@ -1,0 +1,24 @@
+phase: 3A
+success_floor: 0.4832
+frozen_h8_robust_success: 0.604
+derivation: 0.8 * 0.6040 = 0.4832
+training_seeds:
+- 0
+- 199
+gate0_val_seeds:
+- 200
+- 249
+phase3a_val_seeds:
+- 250
+- 399
+conditions:
+- 1_Nominal
+- 2_PoleMass_+30%
+- 3_CartMass_+30%
+- 4a_CartFriction_0.50
+- 4b_JointFriction_0.010
+- 4c_CombinedFriction
+- 5_SensorNoise_0.05
+- 6a_ActuatorDelay_1Step
+- 6b_ActuatorDelay_2Step
+- 7_CombinedHistoricalStress

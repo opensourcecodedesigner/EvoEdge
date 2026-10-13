@@ -1,0 +1,19 @@
+model_name,robust_success_pct,worst_condition_pct,active_parameters,weight_macs,num_activations,dense_params,dense_macs,format
+Frozen_H8_Baseline,60.4,0.0,57,48,9,57,48,pickle / C float array
+Magnitude_Pruned_H8_50%,0.0,0.0,33,24,9,57,48,MaskedGenome JSON
+Phase2C_Champion_ArmC_Seed46,73.93,50.67,65,56,9,65,56,PyTorch .pt
+Dense_64x64_MLP,67.8,0.0,4609,4480,129,4609,4480,PyTorch .pt
+Magnitude_Pruned_64x64_MLP_50%,0.67,0.0,2369,2240,129,4609,4480,PyTorch .pt
+Magnitude_Pruned_64x64_MLP_75%,0.0,0.0,1249,1120,129,4609,4480,PyTorch .pt
+Magnitude_Pruned_64x64_MLP_90%,0.0,0.0,577,448,129,4609,4480,PyTorch .pt
+Six_Input_PrevAction_H8_ArmC_Seed42,0.4,0.0,65,56,9,65,56,PyTorch .pt
+Arm_A_Scratch_Seed42,0.0,0.0,30,26,6,57,48,MaskedGenome JSON
+Arm_A_Scratch_Seed43,0.0,0.0,32,28,6,57,48,MaskedGenome JSON
+Arm_A_Scratch_Seed44,0.0,0.0,44,38,8,57,48,MaskedGenome JSON
+Arm_A_Scratch_Seed45,0.0,0.0,31,26,6,57,48,MaskedGenome JSON
+Arm_A_Scratch_Seed46,0.0,0.0,31,29,6,57,48,MaskedGenome JSON
+Arm_B_WarmStart_Seed42,65.33,0.0,57,48,9,57,48,MaskedGenome JSON
+Arm_B_WarmStart_Seed43,73.67,0.0,57,48,9,57,48,MaskedGenome JSON
+Arm_B_WarmStart_Seed44,60.4,0.0,57,48,9,57,48,MaskedGenome JSON
+Arm_B_WarmStart_Seed45,71.13,0.0,57,48,9,57,48,MaskedGenome JSON
+Arm_B_WarmStart_Seed46,60.4,0.0,57,48,9,57,48,MaskedGenome JSON
