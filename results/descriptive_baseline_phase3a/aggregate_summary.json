@@ -1,0 +1,181 @@
+{
+  "metadata": {
+    "experiment_title": "Stage 1 Descriptive Baseline Evaluation of Energy-Shaping + Linear Feedback",
+    "protocol_classification": "STAGE_1_DESCRIPTIVE_BASELINE_NON_CONFIRMATORY",
+    "controller": {
+      "name": "energy-shaping + linear feedback",
+      "type": "energy-shaping + linear feedback",
+      "gains": {
+        "balance": {
+          "condition": "|theta| < 0.35 rad AND |theta_dot| < 2.50 rad/s",
+          "formula": "u = -(K_x * x + K_x_dot * x_dot + K_theta * theta + K_theta_dot * theta_dot)",
+          "gains": {
+            "K_x": -0.8,
+            "K_x_dot": -1.2,
+            "K_theta": -35.0,
+            "K_theta_dot": -6.5
+          }
+        },
+        "pumping": {
+          "condition": "|theta| >= 0.35 rad OR |theta_dot| >= 2.50 rad/s",
+          "formula": "u = k_E * sign(E - E_0) * sign(theta_dot * cos_theta) - k_x * x - k_v * x_dot",
+          "energy_formula": "E = (2/3) * m * L^2 * theta_dot^2 + m * g * L * (cos_theta - 1.0)",
+          "gains": {
+            "k_E": 0.6,
+            "k_x": 0.5,
+            "k_v": 0.25
+          }
+        }
+      },
+      "sha256": "d13fbbee79fcc98fde74b8dc0ee01a862a5f8366e328d5115474640c8f864e2c"
+    },
+    "git_commit": "e599c04299bcd859423cafacd52473c9ac3f8616",
+    "python_version": "3.12.10",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "timestamp_iso": "2026-10-13T14:50:36Z",
+    "evaluation_seeds": {
+      "range": [
+        250,
+        399
+      ],
+      "count": 150
+    },
+    "conditions_count": 10,
+    "planned_episodes": 1500,
+    "executed_episodes": 1500,
+    "executed_transitions": 750000,
+    "wall_clock_seconds": 3.216
+  },
+  "aggregate_results": {
+    "mean_success_rate": 0.8966666666666667,
+    "bootstrap_cluster_uncertainty": {
+      "method": "seed_cluster_bootstrap",
+      "resamples": 10000,
+      "cluster_unit": "seed_preserving_all_ten_condition_outcomes",
+      "cluster_se": 0.00741258,
+      "ci_two_sided_95": [
+        0.8820,
+        0.9107
+      ],
+      "ci_one_sided_lower_95": 0.8847
+    },
+    "worst_condition": {
+      "name": "7_CombinedHistoricalStress",
+      "success_rate": 0.5666666666666667,
+      "ci_lower_95": 0.4866798706275503,
+      "ci_upper_95": 0.6433240967900394
+    }
+  },
+  "condition_results": {
+    "1_Nominal": {
+      "condition": "1_Nominal",
+      "episodes": 150,
+      "successes": 150,
+      "success_rate": 1.0,
+      "ci_lower_95": 0.9750297556319235,
+      "ci_upper_95": 1.0,
+      "rail_violations": 0,
+      "other_failures": 0,
+      "elapsed_seconds": 0.244
+    },
+    "2_PoleMass_+30%": {
+      "condition": "2_PoleMass_+30%",
+      "episodes": 150,
+      "successes": 150,
+      "success_rate": 1.0,
+      "ci_lower_95": 0.9750297556319235,
+      "ci_upper_95": 1.0,
+      "rail_violations": 0,
+      "other_failures": 0,
+      "elapsed_seconds": 0.244
+    },
+    "3_CartMass_+30%": {
+      "condition": "3_CartMass_+30%",
+      "episodes": 150,
+      "successes": 150,
+      "success_rate": 1.0,
+      "ci_lower_95": 0.9750297556319235,
+      "ci_upper_95": 1.0,
+      "rail_violations": 0,
+      "other_failures": 0,
+      "elapsed_seconds": 0.25
+    },
+    "4a_CartFriction_0.50": {
+      "condition": "4a_CartFriction_0.50",
+      "episodes": 150,
+      "successes": 150,
+      "success_rate": 1.0,
+      "ci_lower_95": 0.9750297556319235,
+      "ci_upper_95": 1.0,
+      "rail_violations": 0,
+      "other_failures": 0,
+      "elapsed_seconds": 0.26
+    },
+    "4b_JointFriction_0.010": {
+      "condition": "4b_JointFriction_0.010",
+      "episodes": 150,
+      "successes": 98,
+      "success_rate": 0.6533333333333333,
+      "ci_lower_95": 0.5742042146686651,
+      "ci_upper_95": 0.7248049103917914,
+      "rail_violations": 51,
+      "other_failures": 1,
+      "elapsed_seconds": 0.256
+    },
+    "4c_CombinedFriction": {
+      "condition": "4c_CombinedFriction",
+      "episodes": 150,
+      "successes": 117,
+      "success_rate": 0.78,
+      "ci_lower_95": 0.7071769001714163,
+      "ci_upper_95": 0.8388397629824609,
+      "rail_violations": 19,
+      "other_failures": 14,
+      "elapsed_seconds": 0.237
+    },
+    "5_SensorNoise_0.05": {
+      "condition": "5_SensorNoise_0.05",
+      "episodes": 150,
+      "successes": 146,
+      "success_rate": 0.9733333333333334,
+      "ci_lower_95": 0.9334461094878556,
+      "ci_upper_95": 0.989582059177032,
+      "rail_violations": 0,
+      "other_failures": 4,
+      "elapsed_seconds": 0.635
+    },
+    "6a_ActuatorDelay_1Step": {
+      "condition": "6a_ActuatorDelay_1Step",
+      "episodes": 150,
+      "successes": 149,
+      "success_rate": 0.9933333333333333,
+      "ci_lower_95": 0.9632071602251817,
+      "ci_upper_95": 0.9988221986649826,
+      "rail_violations": 1,
+      "other_failures": 0,
+      "elapsed_seconds": 0.24
+    },
+    "6b_ActuatorDelay_2Step": {
+      "condition": "6b_ActuatorDelay_2Step",
+      "episodes": 150,
+      "successes": 150,
+      "success_rate": 1.0,
+      "ci_lower_95": 0.9750297556319235,
+      "ci_upper_95": 1.0,
+      "rail_violations": 0,
+      "other_failures": 0,
+      "elapsed_seconds": 0.239
+    },
+    "7_CombinedHistoricalStress": {
+      "condition": "7_CombinedHistoricalStress",
+      "episodes": 150,
+      "successes": 85,
+      "success_rate": 0.5666666666666667,
+      "ci_lower_95": 0.4866798706275503,
+      "ci_upper_95": 0.6433240967900394,
+      "rail_violations": 24,
+      "other_failures": 41,
+      "elapsed_seconds": 0.612
+    }
+  }
+}

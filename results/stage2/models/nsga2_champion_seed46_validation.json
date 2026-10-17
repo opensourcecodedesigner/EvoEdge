@@ -1,0 +1,249 @@
+{
+  "gate1b_rate": 0.0,
+  "gate1b_success_count": 0,
+  "gate1b_total": 100,
+  "robust_success": 0.0,
+  "worst_success": 0.0,
+  "diagnostic_rates": {
+    "1_Nominal": 0.0,
+    "2_PoleMass_+30%": 0.0,
+    "3_CartMass_+30%": 0.0,
+    "4a_CartFriction_0.50": 0.0,
+    "4b_JointFriction_0.010": 0.0,
+    "4c_CombinedFriction": 0.0,
+    "5_SensorNoise_0.05": 0.0,
+    "6a_ActuatorDelay_1Step": 0.0,
+    "6b_ActuatorDelay_2Step": 0.0,
+    "7_CombinedHistoricalStress": 0.0
+  },
+  "validation_transitions_used": 150000,
+  "total_transitions_used": 2000000,
+  "search_transitions_used": 1850000,
+  "champion_complexity": {
+    "active_parameters": 26,
+    "active_weights": 21,
+    "active_biases": 5,
+    "weight_macs": 21,
+    "num_activations": 5,
+    "dense_params": 57,
+    "dense_macs": 48,
+    "active_neurons": 4
+  },
+  "champion_fitness": {
+    "robust_success": 0.0,
+    "worst_success": 0.0,
+    "active_params": 26,
+    "weight_macs": 21,
+    "active_neurons": 4
+  },
+  "champion_genome": {
+    "in_dim": 5,
+    "max_hidden": 8,
+    "out_dim": 1,
+    "w1": [
+      [
+        -0.40477258800658544,
+        -0.3978547211378603,
+        -0.8711114845949575,
+        0.130290399798926,
+        1.2112770463802462
+      ],
+      [
+        -0.26240440832873096,
+        0.0272230452519866,
+        0.49747777723631653,
+        -0.09062728236293627,
+        0.10928367750044837
+      ],
+      [
+        -0.5517670513000036,
+        -0.7798157607290386,
+        0.05602487504670223,
+        0.001277168711441512,
+        -0.36805759273252414
+      ],
+      [
+        0.1576222330200876,
+        0.42918184367840106,
+        1.1015627038037543,
+        -0.9418778999766378,
+        -0.6548180866892751
+      ],
+      [
+        -0.19084834838438372,
+        0.7071656294561278,
+        0.6001083263415039,
+        -0.33793241691402,
+        0.4671218285063125
+      ],
+      [
+        -0.12221767292687347,
+        -0.33706350680548014,
+        0.8627492900891895,
+        1.7137829298062963,
+        0.12868481371816423
+      ],
+      [
+        0.14470785003859532,
+        0.07081360306498757,
+        -0.11167176389568384,
+        0.6518671743035879,
+        -0.12776459073056895
+      ],
+      [
+        0.30058788221460797,
+        -1.094724176921712,
+        -0.8084340325223645,
+        0.739572286752108,
+        0.8758419005832718
+      ]
+    ],
+    "b1": [
+      0.5096383980681329,
+      -0.02796099297603273,
+      0.41734481667803003,
+      0.050310605443280074,
+      0.12518011456946565,
+      0.11694557958814063,
+      -0.2337761659508033,
+      -0.20934426550421084
+    ],
+    "w2": [
+      [
+        -0.8760567592587521,
+        0.27686868362355943,
+        -0.5110813384786198,
+        -0.11976701380770538,
+        0.4759437048625429,
+        0.12383327126701532,
+        0.08664308050186409,
+        0.5027341861612518
+      ]
+    ],
+    "b2": [
+      -0.3123387599413045
+    ],
+    "w1_mask": [
+      [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true,
+        true,
+        false
+      ],
+      [
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    ],
+    "b1_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "w2_mask": [
+      [
+        true,
+        true,
+        true,
+        false,
+        false,
+        true,
+        true,
+        true
+      ]
+    ],
+    "b2_mask": [
+      true
+    ],
+    "neuron_mask": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true
+    ],
+    "hidden_activations": [
+      "tanh",
+      "tanh",
+      "tanh",
+      "tanh",
+      "tanh",
+      "tanh",
+      "tanh",
+      "tanh"
+    ],
+    "fitness": {
+      "robust_success": 0.0,
+      "worst_success": 0.0,
+      "active_params": 26,
+      "weight_macs": 21,
+      "active_neurons": 4
+    },
+    "complexity": {
+      "active_parameters": 26,
+      "active_weights": 21,
+      "active_biases": 5,
+      "weight_macs": 21,
+      "num_activations": 5,
+      "dense_params": 57,
+      "dense_macs": 48,
+      "active_neurons": 4
+    }
+  },
+  "elapsed_sec": 33.33737540245056,
+  "transitions_per_sec": 59992.72515775145
+}

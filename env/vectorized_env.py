@@ -38,10 +38,12 @@ class VectorizedCartPoleEnv:
         delay_steps: int = 0,
         noise_channels: Optional[List[int]] = None,
         seeds: Optional[List[int]] = None,
+        reward_mode: str = "legacy",
     ):
         self.num_envs = num_envs
         self.max_steps = max_steps
         self.delay_steps = delay_steps
+        self.reward_mode = reward_mode
         self.noise_channels = [0, 1, 2, 3, 4] if noise_channels is None else list(noise_channels)
 
         # Broadcast physical parameters to arrays of shape (num_envs,)
@@ -191,10 +193,25 @@ class VectorizedCartPoleEnv:
         rail_hits = np.abs(new_x) >= self.X_THRESHOLD
         self.boundary_violated |= rail_hits
 
-        rewards = np.cos(new_theta) - 0.01 * (new_x / self.X_THRESHOLD) ** 2
         term = np.abs(new_x) > self.X_THRESHOLD
         self.terminated |= term
         trunc = self._step_count >= self.max_steps
+
+        if self.reward_mode == "stage3b":
+            from env.rewards import compute_stage3b_batch_reward
+            rewards = compute_stage3b_batch_reward(
+                x=new_x,
+                x_dot=new_x_dot,
+                theta=new_theta,
+                theta_dot=new_theta_dot,
+                actions=force / self.FORCE_MAG,
+                step_counts=self._step_count,
+                max_steps=self.max_steps,
+                x_threshold=self.X_THRESHOLD,
+                boundary_violated=self.boundary_violated,
+            )
+        else:
+            rewards = np.cos(new_theta) - 0.01 * (new_x / self.X_THRESHOLD) ** 2
 
         obs = self._get_noisy_obs()
         infos = [

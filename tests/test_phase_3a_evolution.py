@@ -272,6 +272,35 @@ class TestMaskedGenome(unittest.TestCase):
         np.testing.assert_allclose(out_batch, out_singles, atol=1e-12)
 
 
+class TestCheckpointResume(unittest.TestCase):
+    """Targeted regression test for optimizer checkpoint resumption."""
+
+    def test_checkpoint_resume_completed_generations(self):
+        """Verify run_robust_nsga2_arm successfully resumes without UnboundLocalError when start_gen >= generations."""
+        import pickle
+        import tempfile
+        from experiments.run_phase_3a_evolution import run_robust_nsga2_arm
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ckpt_path = os.path.join(tmpdir, "TestArm_seed42.pkl")
+            g1 = MaskedGenome(in_dim=5, max_hidden=8, out_dim=1)
+            g2 = MaskedGenome(in_dim=5, max_hidden=8, out_dim=1)
+            with open(ckpt_path, "wb") as f:
+                pickle.dump({"generation": 14, "population": [g1.to_dict(), g2.to_dict()]}, f)
+
+            front, meta = run_robust_nsga2_arm(
+                arm_name="TestArm",
+                warm_start_weights=None,
+                optimizer_seed=42,
+                pop_size=2,
+                generations=15,
+                checkpoint_dir=tmpdir,
+            )
+            self.assertEqual(len(front), 2)
+            self.assertEqual(meta["arm_name"], "TestArm")
+            self.assertEqual(meta["generations"], 15)
+
+
 if __name__ == "__main__":
     import math
     unittest.main()

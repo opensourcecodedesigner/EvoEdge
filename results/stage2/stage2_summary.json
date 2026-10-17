@@ -1,0 +1,1742 @@
+{
+  "timestamp": "2026-10-14T15:51:23Z",
+  "total_elapsed_sec": 170.99028086662292,
+  "es_results": {
+    "42": {
+      "gate1b_rate": 0.0,
+      "gate1b_success_count": 0,
+      "gate1b_total": 100,
+      "robust_success": 0.0,
+      "worst_success": 0.0,
+      "diagnostic_rates": {
+        "1_Nominal": 0.0,
+        "2_PoleMass_+30%": 0.0,
+        "3_CartMass_+30%": 0.0,
+        "4a_CartFriction_0.50": 0.0,
+        "4b_JointFriction_0.010": 0.0,
+        "4c_CombinedFriction": 0.0,
+        "5_SensorNoise_0.05": 0.0,
+        "6a_ActuatorDelay_1Step": 0.0,
+        "6b_ActuatorDelay_2Step": 0.0,
+        "7_CombinedHistoricalStress": 0.0
+      },
+      "validation_transitions_used": 11219,
+      "total_transitions_used": 236409,
+      "search_transitions_used": 225190,
+      "champion_complexity": {
+        "active_parameters": 113,
+        "weight_macs": 96
+      },
+      "champion_fitness": {
+        "best_score": -21.564348220825195
+      },
+      "elapsed_sec": 13.375906944274902,
+      "transitions_per_sec": 17674.240781197026,
+      "history": {
+        "generation": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        "best_reward": [
+          -78.15560150146484,
+          -63.74270248413086,
+          -45.65242004394531,
+          -44.50245666503906,
+          -34.79874801635742,
+          -27.104127883911133,
+          -28.931100845336914,
+          -26.0938720703125,
+          -23.169775009155273,
+          -22.684650421142578,
+          -22.340274810791016,
+          -21.866212844848633,
+          -21.833683013916016,
+          -21.715848922729492,
+          -21.647050857543945,
+          -21.686294555664062,
+          -21.63759422302246,
+          -21.564348220825195
+        ],
+        "mean_reward": [
+          -184.20045471191406,
+          -134.19140625,
+          -118.78250885009766,
+          -77.61380004882812,
+          -55.69750213623047,
+          -44.65439224243164,
+          -33.58721160888672,
+          -29.16571617126465,
+          -26.756710052490234,
+          -25.113975524902344,
+          -23.54768180847168,
+          -22.558204650878906,
+          -22.248537063598633,
+          -21.854267120361328,
+          -21.77431869506836,
+          -21.747697830200195,
+          -21.67617416381836,
+          -21.585798263549805
+        ]
+      }
+    },
+    "43": {
+      "gate1b_rate": 0.0,
+      "gate1b_success_count": 0,
+      "gate1b_total": 100,
+      "robust_success": 0.0,
+      "worst_success": 0.0,
+      "diagnostic_rates": {
+        "1_Nominal": 0.0,
+        "2_PoleMass_+30%": 0.0,
+        "3_CartMass_+30%": 0.0,
+        "4a_CartFriction_0.50": 0.0,
+        "4b_JointFriction_0.010": 0.0,
+        "4c_CombinedFriction": 0.0,
+        "5_SensorNoise_0.05": 0.0,
+        "6a_ActuatorDelay_1Step": 0.0,
+        "6b_ActuatorDelay_2Step": 0.0,
+        "7_CombinedHistoricalStress": 0.0
+      },
+      "validation_transitions_used": 11207,
+      "total_transitions_used": 261950,
+      "search_transitions_used": 250743,
+      "champion_complexity": {
+        "active_parameters": 113,
+        "weight_macs": 96
+      },
+      "champion_fitness": {
+        "best_score": -21.655017852783203
+      },
+      "elapsed_sec": 14.34600281715393,
+      "transitions_per_sec": 18259.44155585825,
+      "history": {
+        "generation": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        "best_reward": [
+          -67.9048080444336,
+          -62.846866607666016,
+          -43.1101188659668,
+          -54.33522033691406,
+          -41.55078125,
+          -36.66044616699219,
+          -30.040864944458008,
+          -29.300443649291992,
+          -25.905738830566406,
+          -23.751201629638672,
+          -23.09296417236328,
+          -22.467002868652344,
+          -22.47555160522461,
+          -22.077781677246094,
+          -21.789688110351562,
+          -21.714941024780273,
+          -21.655017852783203,
+          -21.695850372314453
+        ],
+        "mean_reward": [
+          -132.61732482910156,
+          -177.3942108154297,
+          -149.29000854492188,
+          -99.40592193603516,
+          -102.21710205078125,
+          -54.5605354309082,
+          -44.3624153137207,
+          -36.191585540771484,
+          -31.22782325744629,
+          -28.01618003845215,
+          -25.834264755249023,
+          -24.0515193939209,
+          -22.970609664916992,
+          -22.514923095703125,
+          -22.20929527282715,
+          -21.897123336791992,
+          -21.777904510498047,
+          -21.767948150634766
+        ]
+      }
+    },
+    "44": {
+      "gate1b_rate": 0.0,
+      "gate1b_success_count": 0,
+      "gate1b_total": 100,
+      "robust_success": 0.0,
+      "worst_success": 0.0,
+      "diagnostic_rates": {
+        "1_Nominal": 0.0,
+        "2_PoleMass_+30%": 0.0,
+        "3_CartMass_+30%": 0.0,
+        "4a_CartFriction_0.50": 0.0,
+        "4b_JointFriction_0.010": 0.0,
+        "4c_CombinedFriction": 0.0,
+        "5_SensorNoise_0.05": 0.0,
+        "6a_ActuatorDelay_1Step": 0.0,
+        "6b_ActuatorDelay_2Step": 0.0,
+        "7_CombinedHistoricalStress": 0.0
+      },
+      "validation_transitions_used": 11219,
+      "total_transitions_used": 299488,
+      "search_transitions_used": 288269,
+      "champion_complexity": {
+        "active_parameters": 113,
+        "weight_macs": 96
+      },
+      "champion_fitness": {
+        "best_score": -21.709108352661133
+      },
+      "elapsed_sec": 16.313411712646484,
+      "transitions_per_sec": 18358.391566114333,
+      "history": {
+        "generation": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        "best_reward": [
+          -86.46471405029297,
+          -78.24849700927734,
+          -60.06047058105469,
+          -60.76246643066406,
+          -47.79600524902344,
+          -41.33805847167969,
+          -33.715232849121094,
+          -28.087465286254883,
+          -29.602094650268555,
+          -25.5059814453125,
+          -24.361787796020508,
+          -23.96428871154785,
+          -22.58283042907715,
+          -22.228178024291992,
+          -21.971454620361328,
+          -21.709108352661133,
+          -21.722583770751953,
+          -21.75722885131836
+        ],
+        "mean_reward": [
+          -164.40228271484375,
+          -188.50640869140625,
+          -154.5392608642578,
+          -137.28675842285156,
+          -109.87286376953125,
+          -93.99922180175781,
+          -54.7299690246582,
+          -68.69352722167969,
+          -38.6434326171875,
+          -33.26024627685547,
+          -29.400970458984375,
+          -26.035568237304688,
+          -24.6890811920166,
+          -23.53410530090332,
+          -22.78156280517578,
+          -22.139793395996094,
+          -21.876422882080078,
+          -21.844058990478516
+        ]
+      }
+    },
+    "45": {
+      "gate1b_rate": 0.0,
+      "gate1b_success_count": 0,
+      "gate1b_total": 100,
+      "robust_success": 0.0,
+      "worst_success": 0.0,
+      "diagnostic_rates": {
+        "1_Nominal": 0.0,
+        "2_PoleMass_+30%": 0.0,
+        "3_CartMass_+30%": 0.0,
+        "4a_CartFriction_0.50": 0.0,
+        "4b_JointFriction_0.010": 0.0,
+        "4c_CombinedFriction": 0.0,
+        "5_SensorNoise_0.05": 0.0,
+        "6a_ActuatorDelay_1Step": 0.0,
+        "6b_ActuatorDelay_2Step": 0.0,
+        "7_CombinedHistoricalStress": 0.0
+      },
+      "validation_transitions_used": 11225,
+      "total_transitions_used": 242683,
+      "search_transitions_used": 231458,
+      "champion_complexity": {
+        "active_parameters": 113,
+        "weight_macs": 96
+      },
+      "champion_fitness": {
+        "best_score": -21.629823684692383
+      },
+      "elapsed_sec": 13.632558345794678,
+      "transitions_per_sec": 17801.720986205204,
+      "history": {
+        "generation": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        "best_reward": [
+          -77.09771728515625,
+          -69.07244873046875,
+          -48.96424865722656,
+          -43.180084228515625,
+          -37.008235931396484,
+          -31.943933486938477,
+          -29.790645599365234,
+          -25.85608673095703,
+          -24.477067947387695,
+          -23.145240783691406,
+          -22.584226608276367,
+          -22.24711036682129,
+          -22.077388763427734,
+          -21.743398666381836,
+          -21.715576171875,
+          -21.804330825805664,
+          -21.659343719482422,
+          -21.629823684692383
+        ],
+        "mean_reward": [
+          -132.3686981201172,
+          -170.04530334472656,
+          -149.3718719482422,
+          -78.57609558105469,
+          -60.90596389770508,
+          -47.788597106933594,
+          -36.938941955566406,
+          -31.367603302001953,
+          -28.15353012084961,
+          -25.512039184570312,
+          -24.354129791259766,
+          -23.275577545166016,
+          -22.679738998413086,
+          -22.095462799072266,
+          -21.92264175415039,
+          -21.945537567138672,
+          -21.7336483001709,
+          -21.670705795288086
+        ]
+      }
+    },
+    "46": {
+      "gate1b_rate": 0.0,
+      "gate1b_success_count": 0,
+      "gate1b_total": 100,
+      "robust_success": 0.0,
+      "worst_success": 0.0,
+      "diagnostic_rates": {
+        "1_Nominal": 0.0,
+        "2_PoleMass_+30%": 0.0,
+        "3_CartMass_+30%": 0.0,
+        "4a_CartFriction_0.50": 0.0,
+        "4b_JointFriction_0.010": 0.0,
+        "4c_CombinedFriction": 0.0,
+        "5_SensorNoise_0.05": 0.0,
+        "6a_ActuatorDelay_1Step": 0.0,
+        "6b_ActuatorDelay_2Step": 0.0,
+        "7_CombinedHistoricalStress": 0.0
+      },
+      "validation_transitions_used": 11229,
+      "total_transitions_used": 256049,
+      "search_transitions_used": 244820,
+      "champion_complexity": {
+        "active_parameters": 113,
+        "weight_macs": 96
+      },
+      "champion_fitness": {
+        "best_score": -21.6429386138916
+      },
+      "elapsed_sec": 14.35232162475586,
+      "transitions_per_sec": 17840.249591282103,
+      "history": {
+        "generation": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        "best_reward": [
+          -70.29510498046875,
+          -71.24337768554688,
+          -58.819496154785156,
+          -46.00566864013672,
+          -41.64387130737305,
+          -40.70901107788086,
+          -34.04639434814453,
+          -30.990705490112305,
+          -26.29975700378418,
+          -25.648468017578125,
+          -24.39364242553711,
+          -23.40960121154785,
+          -22.558000564575195,
+          -22.17034339904785,
+          -21.89483070373535,
+          -21.891510009765625,
+          -21.735525131225586,
+          -21.6429386138916
+        ],
+        "mean_reward": [
+          -149.15670776367188,
+          -132.26156616210938,
+          -118.79011535644531,
+          -141.51380920410156,
+          -70.76023864746094,
+          -56.05938720703125,
+          -46.00114822387695,
+          -39.33770751953125,
+          -34.32436752319336,
+          -30.949771881103516,
+          -27.420978546142578,
+          -25.711620330810547,
+          -24.303232192993164,
+          -23.022663116455078,
+          -22.574865341186523,
+          -22.341480255126953,
+          -22.036853790283203,
+          -21.796192169189453
+        ]
+      }
+    }
+  },
+  "nsga2_results": {
+    "42": {
+      "gate1b_rate": 0.0,
+      "gate1b_success_count": 0,
+      "gate1b_total": 100,
+      "robust_success": 0.005,
+      "worst_success": 0.0,
+      "diagnostic_rates": {
+        "1_Nominal": 0.0,
+        "2_PoleMass_+30%": 0.05,
+        "3_CartMass_+30%": 0.0,
+        "4a_CartFriction_0.50": 0.0,
+        "4b_JointFriction_0.010": 0.0,
+        "4c_CombinedFriction": 0.0,
+        "5_SensorNoise_0.05": 0.0,
+        "6a_ActuatorDelay_1Step": 0.0,
+        "6b_ActuatorDelay_2Step": 0.0,
+        "7_CombinedHistoricalStress": 0.0
+      },
+      "validation_transitions_used": 150000,
+      "total_transitions_used": 2000000,
+      "search_transitions_used": 1850000,
+      "champion_complexity": {
+        "active_parameters": 38,
+        "active_weights": 31,
+        "active_biases": 7,
+        "weight_macs": 31,
+        "num_activations": 7,
+        "dense_params": 57,
+        "dense_macs": 48,
+        "active_neurons": 6
+      },
+      "champion_fitness": {
+        "robust_success": 0.1,
+        "worst_success": 0.1,
+        "active_params": 38,
+        "weight_macs": 31,
+        "active_neurons": 6
+      },
+      "champion_genome": {
+        "in_dim": 5,
+        "max_hidden": 8,
+        "out_dim": 1,
+        "w1": [
+          [
+            0.5780577585262365,
+            0.14232920435744856,
+            -0.2713033906534539,
+            -0.5423796756811463,
+            -0.21531830809681393
+          ],
+          [
+            0.2620486776720814,
+            0.27621560419137176,
+            0.09095402971083616,
+            0.7712444903112505,
+            -0.465322955223638
+          ],
+          [
+            -0.5418977912964711,
+            -0.02568993176421272,
+            0.2271066834924904,
+            -0.3260641654402692,
+            0.1362301176675595
+          ],
+          [
+            0.29226332274913275,
+            -0.4156367162059037,
+            -0.41166203063970974,
+            -0.39863878527897945,
+            0.2748042465089517
+          ],
+          [
+            0.7783145166668489,
+            0.482139237200929,
+            0.040462857199277155,
+            -0.110003105874983,
+            -0.2695432670217787
+          ],
+          [
+            0.1378506901129589,
+            -0.6340925510316393,
+            -0.8202483378060842,
+            0.009473503584754822,
+            -0.2805158868946128
+          ],
+          [
+            -0.885582393163389,
+            0.23050677219408622,
+            0.07069480732311041,
+            -0.19310519938608225,
+            -0.24824007464446368
+          ],
+          [
+            -0.2862313785631144,
+            0.3393377629949699,
+            -0.49911071948802993,
+            0.10441943852126993,
+            -0.8789010741752316
+          ]
+        ],
+        "b1": [
+          -0.04330946626037252,
+          -0.14911341920997695,
+          0.0,
+          -0.5359262527739052,
+          -0.19712130245824663,
+          -0.29261993634463745,
+          -0.03345878121315743,
+          0.0
+        ],
+        "w2": [
+          [
+            -1.3989693789169204,
+            -0.3189287420640932,
+            -0.3465616339992875,
+            0.5711587541239748,
+            -0.7927701529627719,
+            -0.14613270554769398,
+            -0.3841361998511818,
+            0.5016438499927824
+          ]
+        ],
+        "b2": [
+          -0.1286323945478139
+        ],
+        "w1_mask": [
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            false,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          [
+            true,
+            true,
+            false,
+            true,
+            true
+          ],
+          [
+            false,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ]
+        ],
+        "b1_mask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "w2_mask": [
+          [
+            true,
+            false,
+            true,
+            true,
+            true,
+            false,
+            true,
+            true
+          ]
+        ],
+        "b2_mask": [
+          true
+        ],
+        "neuron_mask": [
+          true,
+          true,
+          false,
+          true,
+          true,
+          true,
+          true,
+          false
+        ],
+        "hidden_activations": [
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh"
+        ],
+        "fitness": {
+          "robust_success": 0.1,
+          "worst_success": 0.1,
+          "active_params": 38,
+          "weight_macs": 31,
+          "active_neurons": 6
+        },
+        "complexity": {
+          "active_parameters": 38,
+          "active_weights": 31,
+          "active_biases": 7,
+          "weight_macs": 31,
+          "num_activations": 7,
+          "dense_params": 57,
+          "dense_macs": 48,
+          "active_neurons": 6
+        }
+      },
+      "elapsed_sec": 33.29265093803406,
+      "transitions_per_sec": 60073.31779384284
+    },
+    "43": {
+      "gate1b_rate": 0.0,
+      "gate1b_success_count": 0,
+      "gate1b_total": 100,
+      "robust_success": 0.0,
+      "worst_success": 0.0,
+      "diagnostic_rates": {
+        "1_Nominal": 0.0,
+        "2_PoleMass_+30%": 0.0,
+        "3_CartMass_+30%": 0.0,
+        "4a_CartFriction_0.50": 0.0,
+        "4b_JointFriction_0.010": 0.0,
+        "4c_CombinedFriction": 0.0,
+        "5_SensorNoise_0.05": 0.0,
+        "6a_ActuatorDelay_1Step": 0.0,
+        "6b_ActuatorDelay_2Step": 0.0,
+        "7_CombinedHistoricalStress": 0.0
+      },
+      "validation_transitions_used": 150000,
+      "total_transitions_used": 2000000,
+      "search_transitions_used": 1850000,
+      "champion_complexity": {
+        "active_parameters": 23,
+        "active_weights": 19,
+        "active_biases": 4,
+        "weight_macs": 19,
+        "num_activations": 5,
+        "dense_params": 57,
+        "dense_macs": 48,
+        "active_neurons": 4
+      },
+      "champion_fitness": {
+        "robust_success": 0.0,
+        "worst_success": 0.0,
+        "active_params": 23,
+        "weight_macs": 19,
+        "active_neurons": 4
+      },
+      "champion_genome": {
+        "in_dim": 5,
+        "max_hidden": 8,
+        "out_dim": 1,
+        "w1": [
+          [
+            -0.03763120824947587,
+            -0.5707277076584286,
+            -0.10248763661415389,
+            -0.1564441264680911,
+            -0.2294911323567726
+          ],
+          [
+            -0.4090039992306297,
+            0.04315595546325546,
+            -0.20230294320860048,
+            -0.05295877253091793,
+            0.047084525826877485
+          ],
+          [
+            -0.7260461234059848,
+            0.08325510576730334,
+            -0.7828978529008539,
+            1.0200456628660803,
+            -0.45498391485637435
+          ],
+          [
+            -0.6286363696956944,
+            0.257128893806161,
+            -0.11331520872467904,
+            -0.5404574229292443,
+            -0.9439562995364714
+          ],
+          [
+            0.601280241496249,
+            -0.3431546857804248,
+            -0.2041397821544809,
+            0.48971663483116606,
+            -0.3184531450725789
+          ],
+          [
+            0.04201820337712177,
+            -0.001480039136741107,
+            -0.4259595832412808,
+            0.20001273910522782,
+            -0.0013599963816753255
+          ],
+          [
+            -0.16461756128599705,
+            0.5708593508633439,
+            0.2116961795879313,
+            -1.1315422378481472,
+            -0.24183179405507013
+          ],
+          [
+            0.6143050911598499,
+            0.4364372609130539,
+            -0.7516039237113628,
+            0.6094809324425238,
+            -0.14545118349067482
+          ]
+        ],
+        "b1": [
+          0.12636528130002744,
+          -0.06344452392768242,
+          0.0,
+          -0.2126849530824839,
+          0.13270081787001017,
+          0.023727258091858352,
+          -0.24302813720258815,
+          0.04628138360692091
+        ],
+        "w2": [
+          [
+            -0.2625594167394381,
+            0.715524765158432,
+            -0.5178923486644412,
+            0.06350183718467822,
+            0.7114845159395305,
+            0.3491522266454905,
+            0.34796932976986666,
+            0.06575768885176804
+          ]
+        ],
+        "b2": [
+          -0.4236888318256174
+        ],
+        "w1_mask": [
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            false,
+            true
+          ],
+          [
+            true,
+            true,
+            false,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            false,
+            true,
+            true,
+            true
+          ]
+        ],
+        "b1_mask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "w2_mask": [
+          [
+            true,
+            false,
+            false,
+            true,
+            true,
+            true,
+            true,
+            false
+          ]
+        ],
+        "b2_mask": [
+          true
+        ],
+        "neuron_mask": [
+          false,
+          true,
+          true,
+          false,
+          true,
+          false,
+          false,
+          true
+        ],
+        "hidden_activations": [
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh"
+        ],
+        "fitness": {
+          "robust_success": 0.0,
+          "worst_success": 0.0,
+          "active_params": 23,
+          "weight_macs": 19,
+          "active_neurons": 4
+        },
+        "complexity": {
+          "active_parameters": 23,
+          "active_weights": 19,
+          "active_biases": 4,
+          "weight_macs": 19,
+          "num_activations": 5,
+          "dense_params": 57,
+          "dense_macs": 48,
+          "active_neurons": 4
+        }
+      },
+      "elapsed_sec": 32.92022252082825,
+      "transitions_per_sec": 60752.93077787135
+    },
+    "44": {
+      "gate1b_rate": 0.0,
+      "gate1b_success_count": 0,
+      "gate1b_total": 100,
+      "robust_success": 0.0,
+      "worst_success": 0.0,
+      "diagnostic_rates": {
+        "1_Nominal": 0.0,
+        "2_PoleMass_+30%": 0.0,
+        "3_CartMass_+30%": 0.0,
+        "4a_CartFriction_0.50": 0.0,
+        "4b_JointFriction_0.010": 0.0,
+        "4c_CombinedFriction": 0.0,
+        "5_SensorNoise_0.05": 0.0,
+        "6a_ActuatorDelay_1Step": 0.0,
+        "6b_ActuatorDelay_2Step": 0.0,
+        "7_CombinedHistoricalStress": 0.0
+      },
+      "validation_transitions_used": 150000,
+      "total_transitions_used": 2000000,
+      "search_transitions_used": 1850000,
+      "champion_complexity": {
+        "active_parameters": 16,
+        "active_weights": 12,
+        "active_biases": 4,
+        "weight_macs": 12,
+        "num_activations": 4,
+        "dense_params": 57,
+        "dense_macs": 48,
+        "active_neurons": 3
+      },
+      "champion_fitness": {
+        "robust_success": 0.0,
+        "worst_success": 0.0,
+        "active_params": 16,
+        "weight_macs": 12,
+        "active_neurons": 3
+      },
+      "champion_genome": {
+        "in_dim": 5,
+        "max_hidden": 8,
+        "out_dim": 1,
+        "w1": [
+          [
+            -0.2806696545818278,
+            -1.0927182355711749,
+            0.33394790439378985,
+            -1.183154887654092,
+            -0.40329717038645063
+          ],
+          [
+            0.05910155296937554,
+            0.30715541936177515,
+            0.6363864288788423,
+            0.3689577071638943,
+            -0.3182064892808508
+          ],
+          [
+            -0.5536189929673935,
+            -0.07109200394329712,
+            -0.5418343782390354,
+            1.2090328125140077,
+            -0.7630159080519786
+          ],
+          [
+            -0.31630911319389177,
+            -0.2822016315066451,
+            -0.18795825704332758,
+            -0.7894505022609498,
+            0.3421647539287288
+          ],
+          [
+            -0.17580278885361297,
+            -0.10144745059893914,
+            0.328854036361833,
+            -0.23372773741770922,
+            -0.8404406859023754
+          ],
+          [
+            -1.0721782225850711,
+            0.3890073645418559,
+            0.6721209944936115,
+            0.2239859409396408,
+            -0.5255103469304088
+          ],
+          [
+            0.018894115325608224,
+            -0.8061809925378357,
+            0.6028366005480686,
+            0.6018495482710609,
+            0.5177917295982212
+          ],
+          [
+            -0.3896654609355803,
+            -0.6157573330787112,
+            1.0320424192768711,
+            0.02385491526500879,
+            0.7481370701115507
+          ]
+        ],
+        "b1": [
+          0.2990101513436582,
+          -0.07177824944291877,
+          0.09922314584131092,
+          0.009358076646165382,
+          -0.41249213596655726,
+          0.04342278134570005,
+          -0.1512507152907833,
+          0.08704864155877909
+        ],
+        "w2": [
+          [
+            -0.4572042415653075,
+            0.11545440811123937,
+            -0.3853643171315069,
+            -0.2638077030720452,
+            1.3851899689223461,
+            -0.06516499054244669,
+            0.30277298978805145,
+            -0.6056056609484882
+          ]
+        ],
+        "b2": [
+          0.07455648817675899
+        ],
+        "w1_mask": [
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          [
+            false,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            false,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            false
+          ]
+        ],
+        "b1_mask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "w2_mask": [
+          [
+            true,
+            false,
+            true,
+            false,
+            false,
+            true,
+            false,
+            true
+          ]
+        ],
+        "b2_mask": [
+          true
+        ],
+        "neuron_mask": [
+          false,
+          false,
+          false,
+          true,
+          true,
+          false,
+          true,
+          false
+        ],
+        "hidden_activations": [
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh"
+        ],
+        "fitness": {
+          "robust_success": 0.0,
+          "worst_success": 0.0,
+          "active_params": 16,
+          "weight_macs": 12,
+          "active_neurons": 3
+        },
+        "complexity": {
+          "active_parameters": 16,
+          "active_weights": 12,
+          "active_biases": 4,
+          "weight_macs": 12,
+          "num_activations": 4,
+          "dense_params": 57,
+          "dense_macs": 48,
+          "active_neurons": 3
+        }
+      },
+      "elapsed_sec": 32.76008105278015,
+      "transitions_per_sec": 61049.910004122896
+    },
+    "45": {
+      "gate1b_rate": 0.0,
+      "gate1b_success_count": 0,
+      "gate1b_total": 100,
+      "robust_success": 0.0,
+      "worst_success": 0.0,
+      "diagnostic_rates": {
+        "1_Nominal": 0.0,
+        "2_PoleMass_+30%": 0.0,
+        "3_CartMass_+30%": 0.0,
+        "4a_CartFriction_0.50": 0.0,
+        "4b_JointFriction_0.010": 0.0,
+        "4c_CombinedFriction": 0.0,
+        "5_SensorNoise_0.05": 0.0,
+        "6a_ActuatorDelay_1Step": 0.0,
+        "6b_ActuatorDelay_2Step": 0.0,
+        "7_CombinedHistoricalStress": 0.0
+      },
+      "validation_transitions_used": 150000,
+      "total_transitions_used": 2000000,
+      "search_transitions_used": 1850000,
+      "champion_complexity": {
+        "active_parameters": 17,
+        "active_weights": 13,
+        "active_biases": 4,
+        "weight_macs": 13,
+        "num_activations": 4,
+        "dense_params": 57,
+        "dense_macs": 48,
+        "active_neurons": 3
+      },
+      "champion_fitness": {
+        "robust_success": 0.0,
+        "worst_success": 0.0,
+        "active_params": 17,
+        "weight_macs": 13,
+        "active_neurons": 3
+      },
+      "champion_genome": {
+        "in_dim": 5,
+        "max_hidden": 8,
+        "out_dim": 1,
+        "w1": [
+          [
+            -0.5370031724034866,
+            0.18074062757228998,
+            -0.056635481641477387,
+            0.48103694036235906,
+            0.6763386132684552
+          ],
+          [
+            0.5134447309913074,
+            -0.19483613015958912,
+            -0.578511827379662,
+            1.216834573282885,
+            -0.051267467194268834
+          ],
+          [
+            -0.43283252794168803,
+            -0.6791609537591821,
+            0.09801013915742338,
+            0.9803731027546115,
+            0.3414873349812096
+          ],
+          [
+            0.433911260066138,
+            -0.023109757476074105,
+            -0.15450403086172804,
+            0.6776524797380421,
+            -0.5549138275959828
+          ],
+          [
+            -0.2972847110652642,
+            1.2108301408719813,
+            -0.08950783666529336,
+            -0.55865782809312,
+            -0.6424187979482207
+          ],
+          [
+            -0.20368250439157354,
+            -0.1833606707903636,
+            1.2389965923916872,
+            -0.23838854998175912,
+            -0.642035264733555
+          ],
+          [
+            0.19175558085712857,
+            -0.1082698637705482,
+            0.48165695163883354,
+            -0.4668716290324023,
+            0.3145754464915107
+          ],
+          [
+            -0.5802606689297549,
+            -0.48484570280815426,
+            0.25427481487467096,
+            -0.8928550444016445,
+            0.1798836478453475
+          ]
+        ],
+        "b1": [
+          -0.31311759728804495,
+          0.027992577300046038,
+          -0.041090793899575095,
+          -0.1653112629403602,
+          -0.171536836787249,
+          -0.018093099248224404,
+          -0.15669923788000484,
+          -0.2014567642617015
+        ],
+        "w2": [
+          [
+            -0.43257712022752903,
+            -0.05793517818857401,
+            0.6194950594309779,
+            -0.012076052253795738,
+            -0.43622390825388574,
+            -1.2494362272060615,
+            -0.09054105735004808,
+            0.3113790591871712
+          ]
+        ],
+        "b2": [
+          0.29273316057888066
+        ],
+        "w1_mask": [
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            false,
+            true,
+            true
+          ],
+          [
+            true,
+            false,
+            true,
+            true,
+            true
+          ],
+          [
+            false,
+            true,
+            true,
+            false,
+            true
+          ],
+          [
+            false,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ]
+        ],
+        "b1_mask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "w2_mask": [
+          [
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            true,
+            false
+          ]
+        ],
+        "b2_mask": [
+          true
+        ],
+        "neuron_mask": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          false,
+          false,
+          true
+        ],
+        "hidden_activations": [
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh"
+        ],
+        "fitness": {
+          "robust_success": 0.0,
+          "worst_success": 0.0,
+          "active_params": 17,
+          "weight_macs": 13,
+          "active_neurons": 3
+        },
+        "complexity": {
+          "active_parameters": 17,
+          "active_weights": 13,
+          "active_biases": 4,
+          "weight_macs": 13,
+          "num_activations": 4,
+          "dense_params": 57,
+          "dense_macs": 48,
+          "active_neurons": 3
+        }
+      },
+      "elapsed_sec": 32.84662079811096,
+      "transitions_per_sec": 60889.064122998665
+    },
+    "46": {
+      "gate1b_rate": 0.0,
+      "gate1b_success_count": 0,
+      "gate1b_total": 100,
+      "robust_success": 0.0,
+      "worst_success": 0.0,
+      "diagnostic_rates": {
+        "1_Nominal": 0.0,
+        "2_PoleMass_+30%": 0.0,
+        "3_CartMass_+30%": 0.0,
+        "4a_CartFriction_0.50": 0.0,
+        "4b_JointFriction_0.010": 0.0,
+        "4c_CombinedFriction": 0.0,
+        "5_SensorNoise_0.05": 0.0,
+        "6a_ActuatorDelay_1Step": 0.0,
+        "6b_ActuatorDelay_2Step": 0.0,
+        "7_CombinedHistoricalStress": 0.0
+      },
+      "validation_transitions_used": 150000,
+      "total_transitions_used": 2000000,
+      "search_transitions_used": 1850000,
+      "champion_complexity": {
+        "active_parameters": 26,
+        "active_weights": 21,
+        "active_biases": 5,
+        "weight_macs": 21,
+        "num_activations": 5,
+        "dense_params": 57,
+        "dense_macs": 48,
+        "active_neurons": 4
+      },
+      "champion_fitness": {
+        "robust_success": 0.0,
+        "worst_success": 0.0,
+        "active_params": 26,
+        "weight_macs": 21,
+        "active_neurons": 4
+      },
+      "champion_genome": {
+        "in_dim": 5,
+        "max_hidden": 8,
+        "out_dim": 1,
+        "w1": [
+          [
+            -0.40477258800658544,
+            -0.3978547211378603,
+            -0.8711114845949575,
+            0.130290399798926,
+            1.2112770463802462
+          ],
+          [
+            -0.26240440832873096,
+            0.0272230452519866,
+            0.49747777723631653,
+            -0.09062728236293627,
+            0.10928367750044837
+          ],
+          [
+            -0.5517670513000036,
+            -0.7798157607290386,
+            0.05602487504670223,
+            0.001277168711441512,
+            -0.36805759273252414
+          ],
+          [
+            0.1576222330200876,
+            0.42918184367840106,
+            1.1015627038037543,
+            -0.9418778999766378,
+            -0.6548180866892751
+          ],
+          [
+            -0.19084834838438372,
+            0.7071656294561278,
+            0.6001083263415039,
+            -0.33793241691402,
+            0.4671218285063125
+          ],
+          [
+            -0.12221767292687347,
+            -0.33706350680548014,
+            0.8627492900891895,
+            1.7137829298062963,
+            0.12868481371816423
+          ],
+          [
+            0.14470785003859532,
+            0.07081360306498757,
+            -0.11167176389568384,
+            0.6518671743035879,
+            -0.12776459073056895
+          ],
+          [
+            0.30058788221460797,
+            -1.094724176921712,
+            -0.8084340325223645,
+            0.739572286752108,
+            0.8758419005832718
+          ]
+        ],
+        "b1": [
+          0.5096383980681329,
+          -0.02796099297603273,
+          0.41734481667803003,
+          0.050310605443280074,
+          0.12518011456946565,
+          0.11694557958814063,
+          -0.2337761659508033,
+          -0.20934426550421084
+        ],
+        "w2": [
+          [
+            -0.8760567592587521,
+            0.27686868362355943,
+            -0.5110813384786198,
+            -0.11976701380770538,
+            0.4759437048625429,
+            0.12383327126701532,
+            0.08664308050186409,
+            0.5027341861612518
+          ]
+        ],
+        "b2": [
+          -0.3123387599413045
+        ],
+        "w1_mask": [
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            false,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          [
+            false,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            false,
+            true,
+            true
+          ],
+          [
+            true,
+            true,
+            true,
+            true,
+            true
+          ]
+        ],
+        "b1_mask": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "w2_mask": [
+          [
+            true,
+            true,
+            true,
+            false,
+            false,
+            true,
+            true,
+            true
+          ]
+        ],
+        "b2_mask": [
+          true
+        ],
+        "neuron_mask": [
+          false,
+          false,
+          false,
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "hidden_activations": [
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh",
+          "tanh"
+        ],
+        "fitness": {
+          "robust_success": 0.0,
+          "worst_success": 0.0,
+          "active_params": 26,
+          "weight_macs": 21,
+          "active_neurons": 4
+        },
+        "complexity": {
+          "active_parameters": 26,
+          "active_weights": 21,
+          "active_biases": 5,
+          "weight_macs": 21,
+          "num_activations": 5,
+          "dense_params": 57,
+          "dense_macs": 48,
+          "active_neurons": 4
+        }
+      },
+      "elapsed_sec": 33.33737540245056,
+      "transitions_per_sec": 59992.72515775145
+    }
+  },
+  "hybrid_controller": {
+    "controller": "HybridController",
+    "active_parameters": 7,
+    "weight_macs": 7,
+    "gate1b_rate": 1.0,
+    "gate1b_success_count": 100,
+    "gate1b_total": 100,
+    "robust_success": 0.9200000000000002,
+    "worst_success": 0.65,
+    "diagnostic_rates": {
+      "1_Nominal": 1.0,
+      "2_PoleMass_+30%": 1.0,
+      "3_CartMass_+30%": 1.0,
+      "4a_CartFriction_0.50": 1.0,
+      "4b_JointFriction_0.010": 0.7,
+      "4c_CombinedFriction": 0.85,
+      "5_SensorNoise_0.05": 1.0,
+      "6a_ActuatorDelay_1Step": 1.0,
+      "6b_ActuatorDelay_2Step": 1.0,
+      "7_CombinedHistoricalStress": 0.65
+    },
+    "validation_transitions_used": 147896,
+    "total_transitions_used": 147896
+  }
+}

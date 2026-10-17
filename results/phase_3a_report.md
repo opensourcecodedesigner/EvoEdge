@@ -24,7 +24,7 @@ Phase 3A implemented and experimentally validated multi-objective NSGA-II struct
    - **Arm B (Warm-Start):** Successfully explored the robust Pareto landscape, improving robust success over the frozen baseline from **60.40%** to a run-level mean of **66.19% ± 5.44%**, peaking at **73.67%** (Seed 43) and **71.13%** (Seed 45) while retaining exactly **57 active parameters and 48 active weight MACs**.
 5. **Comparison Against Pruned and Dense Baselines:**
    - Magnitude pruning the dense 64×64 MLP and H=8 controller without evolutionary recovery caused catastrophic collapse: 50% magnitude-pruned MLP scored **0.67%**, and 50% magnitude-pruned H=8 scored **0.00%**.
-   - In stark contrast, Arm B warm-started structural evolution preserved baseline compactness (57 params, 48 MACs) while outperforming the dense 64×64 MLP (67.80% robust success with 4,609 params and 4,480 MACs) by **+5.87 percentage points** at **80.8× fewer parameters and 93.3× fewer MACs**.
+   - In stark contrast, Arm B warm-started structural evolution preserved baseline compactness (57 params, 48 MACs) while outperforming the dense 64×64 MLP (67.80% robust success with 4,609 params and 4,480 MACs) by **+5.87 percentage points** at **80.8× fewer parameters and 93.3× fewer MACs** (and relative to the 6-input baseline, achieves **12.3% fewer parameters** [57 vs 65] and **14.3% fewer weight MACs** [48 vs 56]).
    - All improvements remain explicitly categorized as **validation-split results** (evaluated on seeds `250..399`). Generalization to unseen environments remains unverified until separately authorized final holdout evaluation.
 
 ---
@@ -127,18 +127,21 @@ Every baseline and Pareto front model was evaluated on Phase 3A validation parti
 |---|---|---|---|---|---|---|---|---|
 | **Frozen H=8 Baseline** | 60.40% | 0.00% | 57 | 48 | 9 | 57 | 48 | Pickle / C float array |
 | **Magnitude-Pruned H=8 (50%)** | 0.00% | 0.00% | 33 | 24 | 9 | 57 | 48 | MaskedGenome JSON |
-| **Phase 2C Champion (Arm C Seed 46)** | 73.93% | 50.67% | 65 | 56 | 9 | 65 | 56 | PyTorch `.pt` |
+| **Phase 2C Champion (Arm C Seed 46, Robust DR)** | 73.93% | 50.67% | 65 | 56 | 9 | 65 | 56 | PyTorch `.pt` |
 | **Dense 64×64 MLP** | 67.80% | 0.00% | 4,609 | 4,480 | 129 | 4,609 | 4,480 | PyTorch `.pt` |
 | **Magnitude-Pruned 64×64 MLP (50%)** | 0.67% | 0.00% | 2,369 | 2,240 | 129 | 4,609 | 4,480 | PyTorch `.pt` |
 | **Magnitude-Pruned 64×64 MLP (75%)** | 0.00% | 0.00% | 1,249 | 1,120 | 129 | 4,609 | 4,480 | PyTorch `.pt` |
 | **Magnitude-Pruned 64×64 MLP (90%)** | 0.00% | 0.00% | 577 | 448 | 129 | 4,609 | 4,480 | PyTorch `.pt` |
-| **6-Input Prev-Action H=8 (Nominal)** | 0.40% | 0.00% | 65 | 56 | 9 | 65 | 56 | PyTorch `.pt` |
+| **6-Input Prev-Action H=8 (Nominal-Only Seed 42)** | 0.40% | 0.00% | 65 | 56 | 9 | 65 | 56 | PyTorch `.pt` |
 | **Arm A (Scratch) — Seeds 42–46** | 0.00% | 0.00% | 30–44 | 26–38 | 6–8 | 57 | 48 | MaskedGenome JSON |
 | **Arm B (Warm-Start Seed 42)** | 65.33% | 0.00% | 57 | 48 | 9 | 57 | 48 | MaskedGenome JSON |
 | **Arm B (Warm-Start Seed 43)** | **73.67%** | 0.00% | 57 | 48 | 9 | 57 | 48 | MaskedGenome JSON |
 | **Arm B (Warm-Start Seed 44)** | 60.40% | 0.00% | 57 | 48 | 9 | 57 | 48 | MaskedGenome JSON |
 | **Arm B (Warm-Start Seed 45)** | **71.13%** | 0.00% | 57 | 48 | 9 | 57 | 48 | MaskedGenome JSON |
 | **Arm B (Warm-Start Seed 46)** | 60.40% | 0.00% | 57 | 48 | 9 | 57 | 48 | MaskedGenome JSON |
+
+*Note on 6-Input Baselines Provenance:* The 73.93% model (`Phase2C_Champion_ArmC_Seed46`) was trained under robust domain randomization in Phase 2C with friction and delay perturbations. The 0.40% model (`Six_Input_PrevAction_H8_ArmC_Seed42`) was trained under nominal conditions only; without perturbation exposure during training, its previous-action feedback overfit to zero-damping dynamics and completely collapsed under validation perturbations.
+
 
 ---
 

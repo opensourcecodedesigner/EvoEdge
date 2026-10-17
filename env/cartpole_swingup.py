@@ -57,11 +57,13 @@ class CartPoleSwingUpEnv(gym.Env):
         self,
         max_steps: int = 200,
         continuous: bool = True,
+        reward_mode: str = "legacy",
     ) -> None:
         super().__init__()
 
         self.max_steps = max_steps
         self.continuous = continuous
+        self.reward_mode = reward_mode
 
         # Derived constants (cached for speed)
         self._total_mass = self.MASS_CART + self.MASS_POLE
@@ -159,12 +161,26 @@ class CartPoleSwingUpEnv(gym.Env):
         self._state = np.array([x, x_dot, theta, theta_dot], dtype=np.float64)
         self._step_count += 1
 
-        # ── Reward ───────────────────────────────────────────
-        reward = float(np.cos(theta)) - 0.01 * (x / self.X_THRESHOLD) ** 2
-
         # ── Done conditions ──────────────────────────────────
         terminated = bool(abs(x) > self.X_THRESHOLD)
         truncated = self._step_count >= self.max_steps
+
+        # ── Reward ───────────────────────────────────────────
+        if self.reward_mode == "stage3b":
+            from env.rewards import compute_stage3b_step_reward
+            act_scalar = float(action if not isinstance(action, (list, np.ndarray)) else action[0])
+            reward = compute_stage3b_step_reward(
+                x=float(x),
+                x_dot=float(x_dot),
+                theta=float(theta),
+                theta_dot=float(theta_dot),
+                action=act_scalar,
+                step_count=self._step_count,
+                max_steps=self.max_steps,
+                x_threshold=self.X_THRESHOLD,
+            )
+        else:
+            reward = float(np.cos(theta)) - 0.01 * (x / self.X_THRESHOLD) ** 2
 
         return self._get_obs(), reward, terminated, truncated, {}
 

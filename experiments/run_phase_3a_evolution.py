@@ -338,6 +338,7 @@ def run_robust_nsga2_arm(
     # Check for existing checkpoint
     start_gen = 0
     population: List[MaskedGenome] = []
+    survivors: List[MaskedGenome] = []
 
     if os.path.exists(ckpt_path):
         print(f"  Resuming {arm_name} seed {optimizer_seed} from checkpoint {ckpt_path}")
@@ -345,6 +346,7 @@ def run_robust_nsga2_arm(
             ckpt_data = pickle.load(f)
             start_gen = ckpt_data["generation"] + 1
             population = [MaskedGenome.from_dict(d, rng=rng) for d in ckpt_data["population"]]
+            survivors = list(population)
 
     if not population:
         # Initialize population

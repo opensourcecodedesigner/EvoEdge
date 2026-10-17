@@ -1,0 +1,24 @@
+{
+  "controller": "HybridController",
+  "active_parameters": 7,
+  "weight_macs": 7,
+  "gate1b_rate": 1.0,
+  "gate1b_success_count": 100,
+  "gate1b_total": 100,
+  "robust_success": 0.9200000000000002,
+  "worst_success": 0.65,
+  "diagnostic_rates": {
+    "1_Nominal": 1.0,
+    "2_PoleMass_+30%": 1.0,
+    "3_CartMass_+30%": 1.0,
+    "4a_CartFriction_0.50": 1.0,
+    "4b_JointFriction_0.010": 0.7,
+    "4c_CombinedFriction": 0.85,
+    "5_SensorNoise_0.05": 1.0,
+    "6a_ActuatorDelay_1Step": 1.0,
+    "6b_ActuatorDelay_2Step": 1.0,
+    "7_CombinedHistoricalStress": 0.65
+  },
+  "validation_transitions_used": 147896,
+  "total_transitions_used": 147896
+}

@@ -124,6 +124,7 @@ int main(void) {{
 }}
 """
         c_file = os.path.join(scratch_dir, "test_runner.c")
+        controller_c = os.path.join(scratch_dir, "controller.c")
         exe_file = os.path.join(scratch_dir, "test_runner.exe")
 
         with open(c_file, "w", encoding="utf-8") as fh:
@@ -132,7 +133,7 @@ int main(void) {{
         try:
             # Compile with GCC
             comp_res = subprocess.run(
-                ["gcc", "-Wall", "-Wextra", "-Wpedantic", "-I", scratch_dir, c_file, "-o", exe_file],
+                ["gcc", "-Wall", "-Wextra", "-Wpedantic", "-I", scratch_dir, c_file, controller_c, "-o", exe_file],
                 capture_output=True,
                 text=True,
             )
@@ -150,7 +151,7 @@ int main(void) {{
             topology = load_topology(self.sample_topology_path)
             node_0 = [n for n in topology["nodes"] if n["id"] == 0][0]
             bias = float(node_0["bias"])
-            conns = [c for c in topology["connections"] if c["enabled"]]
+            conns = [c for c in topology["connections"] if c["enabled"] and c["to"] == 0]
 
             s = [0.12, -0.34, 0.88, -0.47, 0.56]
             weighted_sum = sum(
@@ -164,6 +165,123 @@ int main(void) {{
                 c_output, py_output, places=5,
                 msg=f"C output ({c_output}) does not match Python ({py_output})"
             )
+        finally:
+            import shutil
+            shutil.rmtree(scratch_dir, ignore_errors=True)
+
+    def test_c_compilation_and_numerical_parity_multilayer(self):
+        """Export multilayer topology with hidden-layer connections, compile with GCC, and verify parity."""
+        scratch_dir = os.path.join(_PROJECT_ROOT, ".test_scratch_multi")
+        os.makedirs(scratch_dir, exist_ok=True)
+
+        multilayer_topology = {
+            "num_inputs": 5,
+            "num_outputs": 1,
+            "num_hidden": 3,
+            "num_active_connections": 8,
+            "nodes": [
+                {"id": -1, "type": "input", "activation": None, "bias": None, "response": None},
+                {"id": -2, "type": "input", "activation": None, "bias": None, "response": None},
+                {"id": -3, "type": "input", "activation": None, "bias": None, "response": None},
+                {"id": -4, "type": "input", "activation": None, "bias": None, "response": None},
+                {"id": -5, "type": "input", "activation": None, "bias": None, "response": None},
+                {"id": 0, "type": "output", "activation": "tanh", "bias": 0.1, "response": 1.0},
+                {"id": 1, "type": "hidden", "activation": "tanh", "bias": -0.2, "response": 1.0},
+                {"id": 2, "type": "hidden", "activation": "tanh", "bias": 0.3, "response": 1.0},
+                {"id": 3, "type": "hidden", "activation": "tanh", "bias": -0.15, "response": 1.0},
+            ],
+            "connections": [
+                {"from": -1, "to": 1, "weight": 0.5, "enabled": True},
+                {"from": -2, "to": 1, "weight": -0.4, "enabled": True},
+                {"from": 1, "to": 2, "weight": 0.8, "enabled": True},      # hidden-to-hidden
+                {"from": -3, "to": 2, "weight": 0.25, "enabled": True},
+                {"from": 1, "to": 3, "weight": -0.35, "enabled": True},    # hidden-to-hidden
+                {"from": 2, "to": 3, "weight": 0.6, "enabled": True},      # hidden-to-hidden
+                {"from": 2, "to": 0, "weight": -0.7, "enabled": True},      # hidden-to-output
+                {"from": 3, "to": 0, "weight": 0.45, "enabled": True},      # hidden-to-output
+                {"from": -5, "to": 0, "weight": 0.15, "enabled": True},     # skip input-to-output
+                {"from": -4, "to": 0, "weight": 9.9, "enabled": False},     # disabled
+            ],
+        }
+
+        top_file = os.path.join(scratch_dir, "multi_topology.json")
+        with open(top_file, "w", encoding="utf-8") as fh:
+            json.dump(multilayer_topology, fh)
+
+        header_path = os.path.join(scratch_dir, "controller.h")
+        export_c(top_file, output_path=header_path)
+
+        c_source = f"""#include <stdio.h>
+#include <math.h>
+#include "controller.h"
+
+int main(void) {{
+    const float s[5] = {{0.12f, -0.34f, 0.88f, -0.47f, 0.56f}};
+    float out = run_controller(s);
+    printf("%.9f\\n", out);
+    return 0;
+}}
+"""
+        c_file = os.path.join(scratch_dir, "test_runner.c")
+        controller_c = os.path.join(scratch_dir, "controller.c")
+        exe_file = os.path.join(scratch_dir, "test_runner.exe")
+
+        with open(c_file, "w", encoding="utf-8") as fh:
+            fh.write(c_source)
+
+        try:
+            # Compile with GCC
+            comp_res = subprocess.run(
+                ["gcc", "-Wall", "-Wextra", "-Wpedantic", "-I", scratch_dir, c_file, controller_c, "-o", exe_file],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(
+                comp_res.returncode, 0, f"GCC compilation failed: {comp_res.stderr}"
+            )
+
+            # Run C executable
+            run_res = subprocess.run([exe_file], capture_output=True, text=True)
+            self.assertEqual(run_res.returncode, 0)
+            c_output = float(run_res.stdout.strip())
+
+            # Evaluate full feedforward topology step-by-step in Python across all hidden nodes
+            s = [0.12, -0.34, 0.88, -0.47, 0.56]
+            node_vals = {}
+            for i, val in enumerate(s):
+                node_vals[-(i + 1)] = np.float32(val)
+
+            sorted_nodes = topological_sort_nodes(multilayer_topology)
+            conns = [c for c in multilayer_topology["connections"] if c.get("enabled", True)]
+            incoming_by_target = {}
+            for c in conns:
+                incoming_by_target.setdefault(c["to"], []).append(c)
+
+            for node in sorted_nodes:
+                nid = node["id"]
+                bias = np.float32(node.get("bias", 0.0) if node.get("bias") is not None else 0.0)
+                response = np.float32(node.get("response", 1.0) if node.get("response") is not None else 1.0)
+                in_conns = incoming_by_target.get(nid, [])
+                w_sum = np.float32(0.0)
+                for c in in_conns:
+                    w_sum += np.float32(c["weight"]) * node_vals[c["from"]]
+                z = bias + response * w_sum
+                scaled = np.float32(2.5) * z
+                scaled = max(np.float32(-60.0), min(np.float32(60.0), scaled))
+                act = np.float32(np.tanh(scaled))
+                node_vals[nid] = act
+
+            output_nodes = [n["id"] for n in sorted_nodes if n.get("type") == "output"]
+            ret_id = output_nodes[0] if output_nodes else 0
+            py_output = float(node_vals[ret_id])
+
+            abs_error = abs(c_output - py_output)
+
+            self.assertAlmostEqual(
+                c_output, py_output, places=5,
+                msg=f"Multilayer C output ({c_output}) does not match Python ({py_output}), error = {abs_error}"
+            )
+            self.assertLess(abs_error, 1e-5, f"Numerical error {abs_error} exceeds 1e-5 threshold.")
         finally:
             import shutil
             shutil.rmtree(scratch_dir, ignore_errors=True)
