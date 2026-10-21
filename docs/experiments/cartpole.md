@@ -1,7 +1,7 @@
 # CartPole Swing-Up & Stabilization Experiments
 
-**Benchmark Target:** CartPole Inverted Pendulum on a Track  
-**Environment Implementations:** `env/cartpole_swingup.py`, `env/vectorized_env.py`  
+**Benchmark Target:** CartPole Inverted Pendulum on a Track
+**Environment Implementations:** `env/cartpole_swingup.py`, `env/vectorized_env.py`
 **Evaluation Partitions:**
 - Development Partition: Seeds `200..209` (10 seeds × 10 conditions = 100 episodes/controller)
 - Historical Phase 3E Holdout: Seeds `2000..2099` (100 seeds × 10 conditions = 1,000 episodes)
@@ -17,6 +17,7 @@ The system consists of an unactuated rigid pole attached to a motorized cart tra
 - Rail displacement limit: $|x| < 2.4\text{ m}$.
 - Gravity: $g = 9.8\text{ m/s}^2$.
 - Simulation step: $\Delta t = 0.02\text{ s}$ ($50\text{ Hz}$).
+- Actuator force ceiling: Continuous force magnitude $F_{\text{mag}} = 10.0\text{ N}$ (canonical continuous environment), with up to $\pm 20.0\text{ N}$ dynamic recovery headroom under combined stress perturbations.
 - Initial State: Downward hanging pole $\theta_0 = \pi\text{ rad}$, zero cart velocity $\dot{x}_0 = 0$, zero angular velocity $\dot{\theta}_0 = 0$.
 
 ### 1.2 Binary Success Predicate

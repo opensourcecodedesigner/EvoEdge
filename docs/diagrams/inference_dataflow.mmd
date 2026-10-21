@@ -24,8 +24,8 @@ graph TD
 
     subgraph ControllerCore ["ANSI C99 Forward Pass (neural_controller_step)"]
         IN_VEC["Input Vector: x[0..6] (7 floats)"]
-        HID_LAYER["Hidden Layer (8 Neurons with tanh activation)<br/>h_j = tanh(sum_i W1_{ij} * x_i + b1_j)"]
-        OUT_NEURON["Output Neuron (1 Neuron with tanh activation)<br/>y = tanh(sum_j W2_j * h_j + b2)"]
+        HID_LAYER["Hidden Layer (8 Neurons with tanh activation)<br/>h_j = tanh(2.5 * (sum_i W1_{ij} * x_i + b1_j))"]
+        OUT_NEURON["Output Neuron (1 Neuron with tanh activation)<br/>y = tanh(2.5 * (sum_j W2_j * h_j + b2))"]
         MEM["Memory Contract: Stack = 64 Bytes | Heap = 0 Bytes"]
 
         NORM_X --> IN_VEC

@@ -1,8 +1,8 @@
 # EvoEdge Reproducibility & Replication Guide
 
-**Document Classification:** Technical Protocol and Verification Standard  
-**Governing Gate Matrix:** [`final_gate_matrix.json`](../work/phase3e_followup_6h/sprint3/project_closeout/final_package/final_gate_matrix.json)  
-**Primary Repository:** `D:\neat`
+**Document Classification:** Technical Protocol and Verification Standard
+**Governing Gate Matrix:** [Verified Results & Gate Matrix](results-and-limitations.md#4-preserved-governance-gates--boundaries)
+**Repository:** [`opensourcecodedesigner/EvoEdge`](https://github.com/opensourcecodedesigner/EvoEdge)
 
 ---
 
@@ -129,7 +129,7 @@ sha256sum <path_to_file>
 
 Strict cryptographic seed governance prevents overfitting to evaluation data and preserves the statistical validity of future confirmatory trials:
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────────────┐
 │                     SEED PARTITION GOVERNANCE                          │
 ├───────────────────────────────┬────────────────────────────────────────┤

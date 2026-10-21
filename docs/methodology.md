@@ -1,8 +1,8 @@
 # EvoEdge Experimental Methodology & Optimization Protocols
 
-**Document Classification:** Scientific Methodology Specification  
-**Primary Repository:** `D:\neat`  
-**Environments:** CartPole Swing-Up (`CartPoleSwingUpEnv`), Gymnasium `Acrobot-v1`  
+**Document Classification:** Scientific Methodology Specification
+**Repository:** [`opensourcecodedesigner/EvoEdge`](https://github.com/opensourcecodedesigner/EvoEdge)
+**Environments:** CartPole Swing-Up (`CartPoleSwingUpEnv`), Gymnasium `Acrobot-v1`
 **Governing Documents:** Protocol v1.8 (`comparison_preregistration.md`), Acrobot Protocol v1.1 (`PROTOCOL.md`)
 
 ---
@@ -11,7 +11,7 @@
 
 ### 1.1 Input Features & Dynamic Delay Registers
 The controller accepts a 7-dimensional normalized feature vector $\mathbf{x}_t \in \mathbb{R}^7$:
-$$\mathbf{x}_t = \left[ \frac{x_t}{2.4},\, \text{clip}\left(\frac{\dot{x}_t}{10.0}, -1, 1\right),\, \cos\theta_t,\, \sin\theta_t,\, \text{clip}\left(\frac{\dot{\theta}_t}{10.0}, -1, 1\right),\, u_{t-1},\, u_{t-2} \right]$$
+$$\mathbf{x}_t = \left[ \frac{x_t}{2.4},\, \operatorname{clip}\left(\frac{\dot{x}_t}{10.0}, -1, 1\right),\, \cos\theta_t,\, \sin\theta_t,\, \operatorname{clip}\left(\frac{\dot{\theta}_t}{10.0}, -1, 1\right),\, u_{t-1},\, u_{t-2} \right]$$
 
 - **Position Normalization:** $x_t / 2.4$ maps the track limits $[-2.4\text{ m}, +2.4\text{ m}]$ linearly to $[-1.0, 1.0]$.
 - **Velocity Clamping:** Cart velocity $\dot{x}_t$ and angular velocity $\dot{\theta}_t$ are divided by $10.0$ and clamped to $[-1.0, 1.0]$, preventing extreme transient velocity outliers from saturating the input layer.
@@ -28,7 +28,7 @@ Actuator saturation is strictly bounded to $\pm 20.0\text{ N}$.
 ## 2. Multi-Stage Optimization Pipeline & Teacher Provenance
 
 ### 2.1 The Teacher-Assisted Compression Paradigm
-EvoEdge is **not** an autonomous from-scratch neuroevolutionary discovery system. Evolving neural swing-up controllers tabula rasa under sparse terminal balance constraints frequently leads to deceptive local optima (e.g., pumping back and forth or holding the pole horizontal). 
+EvoEdge is **not** an autonomous from-scratch neuroevolutionary discovery system. Evolving neural swing-up controllers tabula rasa under sparse terminal balance constraints frequently leads to deceptive local optima (e.g., pumping back and forth or holding the pole horizontal).
 
 To solve this, EvoEdge uses a **teacher-assisted compression and robustification pipeline**:
 1. **Teacher Generation:** An expert classical controller generates 200,000 transitions of state-action demonstrations.
@@ -74,15 +74,15 @@ Controllers are evaluated across a preregistered suite of 10 physical diagnostic
 | Condition ID | Name | Cart Mass $M_c$ | Pole Mass $m_p$ | Cart Friction $b_c$ | Joint Friction $b_p$ | Sensor Noise $\sigma$ | Transport Delay $\tau$ |
 | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **1** | **Nominal** | $1.00\text{ kg}$ | $0.10\text{ kg}$ | $0.00$ | $0.00$ | $0.00$ | $0\text{ ms}$ (0 steps) |
-| **2** | **Pole Mass +30%** | $1.00\text{ kg}$ | **$0.13\text{ kg}$** | $0.00$ | $0.00$ | $0.00$ | $0\text{ ms}$ (0 steps) |
-| **3** | **Cart Mass +30%** | **$1.30\text{ kg}$** | $0.10\text{ kg}$ | $0.00$ | $0.00$ | $0.00$ | $0\text{ ms}$ (0 steps) |
-| **4a** | **Cart Friction 0.50** | $1.00\text{ kg}$ | $0.10\text{ kg}$ | **$0.50\text{ N}\cdot\text{s/m}$** | $0.00$ | $0.00$ | $0\text{ ms}$ (0 steps) |
-| **4b** | **Joint Friction 0.010** | $1.00\text{ kg}$ | $0.10\text{ kg}$ | $0.00$ | **$0.010\text{ N}\cdot\text{m}\cdot\text{s/rad}$** | $0.00$ | $0\text{ ms}$ (0 steps) |
-| **4c** | **Combined Friction** | $1.00\text{ kg}$ | $0.10\text{ kg}$ | **$0.50\text{ N}\cdot\text{s/m}$** | **$0.010\text{ N}\cdot\text{m}\cdot\text{s/rad}$** | $0.00$ | $0\text{ ms}$ (0 steps) |
-| **5** | **Sensor Noise 0.05** | $1.00\text{ kg}$ | $0.10\text{ kg}$ | $0.00$ | $0.00$ | **$\mathcal{N}(0, 0.05^2)$** | $0\text{ ms}$ (0 steps) |
-| **6a** | **Actuator Delay 1-Step** | $1.00\text{ kg}$ | $0.10\text{ kg}$ | $0.00$ | $0.00$ | $0.00$ | **$20\text{ ms}$ (1 step)** |
-| **6b** | **Actuator Delay 2-Step** | $1.00\text{ kg}$ | $0.10\text{ kg}$ | $0.00$ | $0.00$ | $0.00$ | **$40\text{ ms}$ (2 steps)** |
-| **7** | **Combined Stress** | **$1.30\text{ kg}$** | **$0.13\text{ kg}$** | **$0.30\text{ N}\cdot\text{s/m}$** | **$0.005\text{ N}\cdot\text{m}\cdot\text{s/rad}$** | **$\sigma = 0.03$** | **$40\text{ ms}$ (2 steps)** |
+| **2** | **Pole Mass +30%** | $1.00\text{ kg}$ | $\mathbf{0.13\text{ kg}}$ | $0.00$ | $0.00$ | $0.00$ | $0\text{ ms}$ (0 steps) |
+| **3** | **Cart Mass +30%** | $\mathbf{1.30\text{ kg}}$ | $0.10\text{ kg}$ | $0.00$ | $0.00$ | $0.00$ | $0\text{ ms}$ (0 steps) |
+| **4a** | **Cart Friction 0.50** | $1.00\text{ kg}$ | $0.10\text{ kg}$ | $\mathbf{0.50\text{ N}\cdot\text{s/m}}$ | $0.00$ | $0.00$ | $0\text{ ms}$ (0 steps) |
+| **4b** | **Joint Friction 0.010** | $1.00\text{ kg}$ | $0.10\text{ kg}$ | $0.00$ | $\mathbf{0.010\text{ N}\cdot\text{m}\cdot\text{s/rad}}$ | $0.00$ | $0\text{ ms}$ (0 steps) |
+| **4c** | **Combined Friction** | $1.00\text{ kg}$ | $0.10\text{ kg}$ | $\mathbf{0.50\text{ N}\cdot\text{s/m}}$ | $\mathbf{0.010\text{ N}\cdot\text{m}\cdot\text{s/rad}}$ | $0.00$ | $0\text{ ms}$ (0 steps) |
+| **5** | **Sensor Noise 0.05** | $1.00\text{ kg}$ | $0.10\text{ kg}$ | $0.00$ | $0.00$ | $\mathbf{\sigma = 0.05}$ | $0\text{ ms}$ (0 steps) |
+| **6a** | **Actuator Delay 1-Step** | $1.00\text{ kg}$ | $0.10\text{ kg}$ | $0.00$ | $0.00$ | $0.00$ | $\mathbf{20\text{ ms}\text{ (1 step)}}$ |
+| **6b** | **Actuator Delay 2-Step** | $1.00\text{ kg}$ | $0.10\text{ kg}$ | $0.00$ | $0.00$ | $0.00$ | $\mathbf{40\text{ ms}\text{ (2 steps)}}$ |
+| **7** | **Combined Stress** | $\mathbf{1.30\text{ kg}}$ | $\mathbf{0.13\text{ kg}}$ | $\mathbf{0.30\text{ N}\cdot\text{s/m}}$ | $\mathbf{0.005\text{ N}\cdot\text{m}\cdot\text{s/rad}}$ | $\mathbf{\sigma = 0.03}$ | $\mathbf{40\text{ ms}\text{ (2 steps)}}$ |
 
 ---
 
