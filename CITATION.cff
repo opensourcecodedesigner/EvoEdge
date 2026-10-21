@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, reference models, or experimental protocols in your research, please cite it as below."
+title: "EvoEdge: Compact Neural Controllers and Embedded Deployment for Underactuated Dynamical Systems"
+version: 1.0.0
+date-released: 2026-10-21
+url: "https://github.com/opensourcecodedesigner/EvoEdge"
+repository-code: "https://github.com/opensourcecodedesigner/EvoEdge"
+license: MIT
+keywords:
+  - reinforcement-learning
+  - neuroevolution
+  - neural-network-pruning
+  - embedded-systems
+  - control-theory
+  - cartpole-swingup
+  - acrobot
+  - ansi-c99

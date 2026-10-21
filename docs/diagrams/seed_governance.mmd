@@ -1,0 +1,26 @@
+graph LR
+    subgraph CartPolePartitions ["CartPole Seed Partitions"]
+        S_TRAIN["Seeds 0 - 199<br/>ES Baseline Training<br/>Status: ACTIVE (Consumed)"]
+        S_DEV["Seeds 200 - 209<br/>Development Evaluation<br/>(10 seeds x 10 conditions = 100 eps/model)<br/>Status: ACTIVE (Evaluated)"]
+        S_QUAR["Seeds 600 - 749<br/>Quarantine Partition<br/>Status: PROTECTED (Zero Access)"]
+        S_HOLDOUT["Seeds 2000 - 2099<br/>Phase 3E Holdout Partition<br/>Status: PROTECTED (Zero Access in Sprint 3)"]
+        S_PROSPECT["Seeds 3000 - 3099<br/>Prospective Confirmation Partition<br/>Status: BLOCKED (Awaiting Human Key Signature)"]
+    end
+
+    subgraph AcrobotPartitions ["Acrobot-v1 Seed Partitions"]
+        AC_TRAIN_S["Seeds 400 - 499<br/>Acrobot ES Training Rollouts<br/>Status: ACTIVE (Consumed)"]
+        AC_DEV_S["Seeds 500 - 549<br/>Acrobot Development Evaluation<br/>(50 seeds x 5 conditions = 250 eps/model)<br/>Status: ACTIVE (Evaluated)"]
+        AC_RES_S["Seeds 1500 - 1599<br/>Acrobot Reserved Partition<br/>Status: STRICTLY PRESERVED (Untouched)"]
+    end
+
+    subgraph GovernanceGates ["Governance Acceptance Gates"]
+        G_DEV["Gate 6 & 7: Development Acceptance<br/>Median Baseline >= 60% (Observed 95%)<br/>Status: PASS"]
+        G_ACRO["Gate 13: Distinct Benchmark<br/>Budget <= 150k transitions<br/>Status: PASS"]
+        G_SIL["Gate 9: Host SIL C Validation<br/>p50 = 2.50 us, parity verified<br/>Status: PASS"]
+        G_HW["Gate 10: Physical MCU Target<br/>Status: BLOCKED (No Hardware)"]
+        G_PROS["Gate 11: Prospective CartPole Holdout<br/>Status: BLOCKED (No Key Signature)"]
+    end
+
+    S_DEV --> G_DEV
+    AC_DEV_S --> G_ACRO
+    S_PROSPECT -.-> G_PROS
