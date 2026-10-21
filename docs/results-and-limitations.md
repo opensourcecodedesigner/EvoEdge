@@ -1,8 +1,8 @@
 # Verified Scientific Results & Critical Limitations
 
-**Document Classification:** Scientific Findings and Scope Boundaries  
-**Primary Repository:** `D:\neat`  
-**Governing Gate Matrix:** [`final_gate_matrix.json`](../work/phase3e_followup_6h/sprint3/project_closeout/final_package/final_gate_matrix.json)  
+**Document Classification:** Scientific Findings and Scope Boundaries
+**Repository:** [`opensourcecodedesigner/EvoEdge`](https://github.com/opensourcecodedesigner/EvoEdge)
+**Governing Gate Matrix:** [Section 4: Preserved Governance Gates & Boundaries](#4-preserved-governance-gates--boundaries)
 **Overall Project Recommendation:** **`COMPLETE WITH STATED LIMITATIONS`**
 
 ---
@@ -11,13 +11,13 @@
 
 Based on rigorous defect correction, multi-seed baseline retraining, independent development evaluation, and software-in-the-loop validation, the project supports four core conclusions:
 
-1. **Compact Neural Topology is Representationally Sufficient for Nonlinear Control:**  
+1. **Compact Neural Topology is Representationally Sufficient for Nonlinear Control:**
    A sub-100-parameter neural controller (69 parameters, 60 MACs on CartPole; 65 parameters, 56 MACs on Acrobot) has sufficient non-linear expressiveness to discover and stably maintain resonant energy-pumping manifolds on underactuated chaotic dynamical systems, achieving robust success rates ($\ge 99\%$) matching or exceeding classical analytical references.
-2. **Massive Computational and Parameter Efficiency:**  
+2. **Massive Computational and Parameter Efficiency:**
    Compared to standard learned multilayer perceptrons (64×64 MLPs), the compact architecture achieves parity on CartPole with **$68.6\times$ fewer parameters** (69 vs 4,737) and **$76.8\times$ fewer multiply-accumulates** (60 vs 4,608). On Acrobot, it achieves an **$81.1\times$ compute reduction** (56 vs 4,544 MACs).
-3. **Pure Zero-Heap ANSI C Deployment Feasibility:**  
+3. **Pure Zero-Heap ANSI C Deployment Feasibility:**
    The frozen neural controller exports directly to portable ANSI C99 requiring **zero dynamic heap allocation** and only **64 bytes of stack space**, matching the Python reference forward pass to within $< 1.25 \times 10^{-6}$ closed-loop error.
-4. **Generalization to a Distinct Benchmark (Tabula Rasa):**  
+4. **Generalization to a Distinct Benchmark (Tabula Rasa):**
    The compact topology and evolutionary pipeline successfully learn a second, genuinely distinct underactuated dynamical system (Acrobot-v1) under strict budget accounting ($\le 150,000$ search transitions).
 
 ---

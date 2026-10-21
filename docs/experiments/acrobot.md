@@ -1,9 +1,9 @@
 # Acrobot-v1 Distinct Benchmark Experiments
 
-**Target Environment:** Gymnasium `Acrobot-v1` (Underactuated Double Pendulum)  
-**Workspace:** `work/phase3e_followup_6h/sprint3/research_upgrade/second_task/`  
-**Governing Protocol:** Preregistered Protocol v1.1 ([`PROTOCOL.md`](../../work/phase3e_followup_6h/sprint3/research_upgrade/second_task/PROTOCOL.md))  
-**Evaluation Partition:** Seeds `500..549` (50 seeds × 5 conditions = 250 episodes per controller)  
+**Target Environment:** Gymnasium `Acrobot-v1` (Underactuated Double Pendulum)
+**Experiment Workspace:** Second Task Research Upgrade (`results/` & models archive)
+**Governing Protocol:** Preregistered Protocol v1.1 ([Methodology: Protocol Specification](../methodology.md))
+**Evaluation Partition:** Seeds `500..549` (50 seeds × 5 conditions = 250 episodes per controller)
 **Reserved Partition:** Seeds `1500..1599` (**STRICTLY PRESERVED / UNTOUCHED**)
 
 ---
@@ -18,7 +18,7 @@ Unlike CartPole (a single inverted pendulum on an actuated linear cart), the Acr
 
 ### 1.2 State Space & Normalization ($D=6$)
 The observation vector is continuous and 6-dimensional:
-$$\mathbf{x} = \left[ \cos\theta_1,\, \sin\theta_1,\, \cos\theta_2,\, \sin\theta_2,\, \text{clip}\left(\frac{\dot\theta_1}{4\pi}, -1, 1\right),\, \text{clip}\left(\frac{\dot\theta_2}{9\pi}, -1, 1\right) \right]$$
+$$\mathbf{x} = \left[ \cos\theta_1,\, \sin\theta_1,\, \cos\theta_2,\, \sin\theta_2,\, \operatorname{clip}\left(\frac{\dot\theta_1}{4\pi}, -1, 1\right),\, \operatorname{clip}\left(\frac{\dot\theta_2}{9\pi}, -1, 1\right) \right]$$
 - Joint angle $\theta_1 = 0$ corresponds to link 1 hanging straight **downwards** in the stable resting position.
 - Joint angle $\theta_2 = 0$ is the relative angle between link 2 and link 1.
 
@@ -115,11 +115,11 @@ When corrected in `ClassicalAcrobotSpongControllerV2_Corrected`, the analytical 
 
 ## 6. Critical Scientific Conclusions & Disclosures
 
-1. **Classical Reliability vs. Neural Search Variance:**  
+1. **Classical Reliability vs. Neural Search Variance:**
    The corrected classical controller achieved **100.0% (250/250)** across the entire development suite, while the compact neural controller achieved 100% on **only one of three training seeds** (Seed 44: 100%; Seeds 42 and 43: 0%). Analytical physics-based control provides deterministic reliability that tabula rasa ES search cannot guarantee across all random seeds under tight transition budgets.
-2. **Distinguishing Within-Run from Across-Run Uncertainty:**  
+2. **Distinguishing Within-Run from Across-Run Uncertainty:**
    For a single model, bootstrap confidence intervals reflect sampling variability across evaluation seeds (e.g., Compact Seed 44: [98.5%, 100.0%]). However, optimization variance across independent training seeds is substantial (Compact: 0%, 0%, 100%; MLP: 0%, 88%, 52.8%).
-3. **No Claim of Architectural Superiority:**  
+3. **No Claim of Architectural Superiority:**
    We explicitly disavow claims of architectural superiority over the MLP baseline based on selecting the best seed. Across all three seeds, the MLP baseline demonstrated a higher convergence yield (2/3 vs 1/3) and higher aggregate success (46.9% vs 33.3%). The true advantage of the compact architecture is its **81.1× compute efficiency** (56 vs 4,544 MACs) and representational sufficiency once the swing-up basin is reached.
-4. **Task Provenance:**  
+4. **Task Provenance:**
    Acrobot neural controllers were trained tabula rasa on Acrobot dynamics. They demonstrate that the compact topology and evolutionary pipeline can learn a second distinct control task; they do **not** represent zero-shot transfer of the frozen CartPole weights.

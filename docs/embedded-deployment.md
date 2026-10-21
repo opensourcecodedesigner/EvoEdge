@@ -1,9 +1,9 @@
 # Embedded C Deployment, Numerical Parity, and Hardware Boundaries
 
-**Artifact Target:** Portable ANSI C99 Neural & Classical Controllers  
-**Source Implementations:** `results/deployment/neural_controller.c`, `results/deployment/hybrid_controller.c`  
-**Public Interfaces:** `results/deployment/neural_controller.h`, `results/deployment/hybrid_controller.h`  
-**Host Native Libraries:** `results/deployment/neural_controller.dll`, `results/deployment/hybrid_controller.dll`  
+**Artifact Target:** Portable ANSI C99 Neural & Classical Controllers
+**Source Implementations:** `results/deployment/neural_controller.c`, `results/deployment/hybrid_controller.c`
+**Public Interfaces:** `results/deployment/neural_controller.h`, `results/deployment/hybrid_controller.h`
+**Host Native Libraries:** `results/deployment/neural_controller.dll`, `results/deployment/hybrid_controller.dll`
 **Hardware Gate Status:** **`GATE 10: BLOCKED (PHYSICAL HARDWARE UNAVAILABLE)`**
 
 ---
@@ -24,27 +24,42 @@ To bridge research models with bare-metal firmware, EvoEdge exports the frozen n
 #ifndef NEURAL_CONTROLLER_H
 #define NEURAL_CONTROLLER_H
 
+#include <math.h>
+#include <stdbool.h>
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#define NEURAL_NUM_INPUTS       7
+#define NEURAL_NUM_HIDDEN       8
+#define NEURAL_NUM_OUTPUTS      1
+#define NEURAL_ACTIVE_PARAMS    69
+#define NEURAL_WEIGHT_MACS      60
+#define NEURAL_STACK_BYTES      64
+
 typedef struct {
-    float u_prev1;  /* Action at step t-1 */
-    float u_prev2;  /* Action at step t-2 */
-    int initialized;
-} neural_controller_t;
+    float u_prev1;  /* Previous action at step t-1 */
+    float u_prev2;  /* Previous action at step t-2 */
+} NeuralControllerState;
 
 /* Initialize or reset controller state */
-void neural_controller_init(neural_controller_t* ctrl);
+void neural_controller_init(NeuralControllerState* state);
+void neural_controller_reset(NeuralControllerState* state);
 
-/* Compute next force action (Returns force in [-20.0, 20.0] Newtons) */
+/* Compute next normalized action in [-1.0, 1.0] */
 float neural_controller_step(
-    neural_controller_t* ctrl,
-    float x,
-    float x_dot,
-    float theta,
-    float theta_dot
+    NeuralControllerState* state,
+    float cart_pos,
+    float cart_vel,
+    float cos_th,
+    float sin_th,
+    float pole_vel
 );
+
+/* Raw feedforward forward pass without mutating delay registers */
+float neural_forward_raw(const float in[7]);
 
 #ifdef __cplusplus
 }
@@ -72,32 +87,35 @@ Inside `neural_controller_step`:
    in[5] = ctrl->u_prev1;
    in[6] = ctrl->u_prev2;
    ```
-3. **Hidden Layer (8 Neurons with Pruning Mask):**
+3. **Hidden Layer (8 Neurons with Pruning Mask & Scale Factor):**
    ```c
    float hidden[8];
-   for (int j = 0; j < 8; j++) {
-       float sum = BIAS_H[j];
-       for (int i = 0; i < 7; i++) {
-           sum += WEIGHTS_IH[j][i] * in[i];
+   for (int j = 0; j < 8; ++j) {
+       float sum = B1[j];
+       for (int i = 0; i < 7; ++i) {
+           sum += W1[j][i] * in[i];
        }
-       hidden[j] = tanhf(sum);
+       hidden[j] = tanhf(2.5f * sum);
    }
    ```
-4. **Output Neuron & Saturation:**
+4. **Output Neuron, Saturation & Register Shift:**
    ```c
-   float out_sum = BIAS_OUT;
-   for (int j = 0; j < 8; j++) {
-       out_sum += WEIGHTS_HO[j] * hidden[j];
+   float out = B2;
+   for (int j = 0; j < 8; ++j) {
+       out += W2[j] * hidden[j];
    }
-   float raw_u = tanhf(out_sum);
-   float force = fmaxf(-20.0f, fminf(20.0f, raw_u * 20.0f));
+   float action = clip_f(tanhf(2.5f * out), -1.0f, 1.0f);
 
-   /* Register shift */
-   ctrl->u_prev2 = ctrl->u_prev1;
-   ctrl->u_prev1 = raw_u;
+   /* Update internal history registers */
+   if (state != NULL) {
+       state->u_prev2 = state->u_prev1;
+       state->u_prev1 = action;
+   }
 
-   return force;
+   return action;
    ```
+
+*Note on Actuation Scaling:* `neural_controller_step` outputs a normalized control command $u \in [-1.0, 1.0]$. The physical actuator force $F = F_{\text{mag}} \cdot u$ (where $F_{\text{mag}} = 20.0\text{ N}$ under maximum dynamic authority or $10.0\text{ N}$ nominal) is scaled by the platform adapter or environment wrapper before commanding the motor driver.
 
 ---
 

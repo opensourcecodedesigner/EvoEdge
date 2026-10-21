@@ -1,8 +1,8 @@
 # EvoEdge System Architecture & Technical Design
 
-**Document Classification:** Technical Architecture Specification  
-**Primary Repository:** `D:\neat`  
-**Target Environments:** CartPole Swing-Up (`CartPoleSwingUpEnv`), Gymnasium `Acrobot-v1`  
+**Document Classification:** Technical Architecture Specification
+**Repository:** [`opensourcecodedesigner/EvoEdge`](https://github.com/opensourcecodedesigner/EvoEdge)
+**Target Environments:** CartPole Swing-Up (`CartPoleSwingUpEnv`), Gymnasium `Acrobot-v1`
 **Deployment Target:** ANSI C99 Portable Library (`neural_controller.c` / `hybrid_controller.c`)
 
 ---
@@ -96,12 +96,24 @@ $$\mathbf{x}_t = \left[ \frac{x_t}{2.4},\, \text{clip}\left(\frac{\dot{x}_t}{10.
 | **Classical Reference (`HybridController`)** | Piecewise Energy/LQR | N/A (Analytical) | **7** | **7** | **0 B / 32 B** |
 
 ### Mathematical Formulation of the Compact Candidate
-For an input vector $\mathbf{x} \in \mathbb{R}^7$:
-$$\mathbf{h} = \tanh\left( \mathbf{M}_1 \odot (\mathbf{W}_1 \mathbf{x} + \mathbf{b}_1) \right) \in \mathbb{R}^8$$
-$$y = \tanh\left( \mathbf{m}_2 \odot (\mathbf{W}_2 \mathbf{h} + b_2) \right) \in [-1.0, 1.0]$$
-$$\text{Force } F = 20.0 \cdot y \quad [\text{N}]$$
+For a normalized input vector $\mathbf{x} \in \mathbb{R}^7$:
 
-Where $\mathbf{M}_1 \in \{0, 1\}^{8 \times 7}$ and $\mathbf{m}_2 \in \{0, 1\}^8$ are binary structural masks evolved via NSGA-II to prune inactive synaptic connections.
+$$\mathbf{a}_1 = (\mathbf{M}_1 \odot \mathbf{W}_1)\mathbf{x} + \mathbf{b}_1 \in \mathbb{R}^8$$
+
+$$\mathbf{h} = \tanh\left(2.5 \cdot \mathbf{a}_1\right) \in \mathbb{R}^8$$
+
+$$a_2 = (\mathbf{m}_2 \odot \mathbf{w}_2)^T \mathbf{h} + b_2 \in \mathbb{R}$$
+
+$$y = \operatorname{clip}\left(\tanh(2.5 \cdot a_2), -1.0, 1.0\right) \in [-1.0, 1.0]$$
+
+$$\text{Physical Actuator Force: } F = 20.0 \cdot y \quad [\text{N}]$$
+
+Where:
+- $\mathbf{M}_1 \in \{0, 1\}^{8 \times 7}$ is the binary input-to-hidden pruning mask (52 active weights).
+- $\mathbf{W}_1 \in \mathbb{R}^{8 \times 7}$ and $\mathbf{b}_1 \in \mathbb{R}^8$ are hidden-layer weights and biases.
+- $\mathbf{m}_2 \in \{0, 1\}^8$ is the hidden-to-output pruning mask (8 active weights).
+- $\mathbf{w}_2 \in \mathbb{R}^8$ and $b_2 \in \mathbb{R}$ are output weights and bias.
+- The scale factor $2.5$ originates from the DAgger teacher policy manifold, steepening the linear response region before tanh saturation.
 
 ---
 

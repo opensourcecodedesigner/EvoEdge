@@ -175,7 +175,7 @@ For full reproduction commands and SHA-256 hash verification, see [`docs/reprodu
 
 ## Repository Structure
 
-```
+```text
 EvoEdge/
 ├── README.md                      # Project landing page and executive overview
 ├── CONTRIBUTING.md                # Development standards and seed protection rules
