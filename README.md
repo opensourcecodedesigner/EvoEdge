@@ -1,237 +1,224 @@
-# EvoEdge — Compact CartPole Control & Embedded Deployment Framework
+# EvoEdge: Compact Neural Controllers & Embedded Deployment Framework
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![C99 Portable Core](https://img.shields.io/badge/Language-ANSI_C99-green.svg)](#embedded-architecture)
-[![Test Suite Status](https://img.shields.io/badge/Tests-126%20Passed-brightgreen.svg)](#testing--verification)
-[![SIL Validation](https://img.shields.io/badge/SIL%20Validation-100%25%20Success-success.svg)](#software-in-the-loop-sil-demonstration)
+[![C99 Portable Core](https://img.shields.io/badge/Language-ANSI_C99-green.svg)](docs/embedded-deployment.md)
+[![Test Suite Status](https://img.shields.io/badge/Tests-Passing-brightgreen.svg)](docs/reproducibility.md)
+[![Research Status](https://img.shields.io/badge/Status-Research_Prototype-orange.svg)](docs/results-and-limitations.md)
+[![Gate Matrix](https://img.shields.io/badge/Audited_Gates-12_Passed__2_Blocked-blue.svg)](docs/results-and-limitations.md#4-preserved-governance-gates--boundaries)
 
-A reproducible research and embedded-software framework for evaluating compact control architectures on the nonlinear **CartPole Swing-Up** problem under strict embedded deployment constraints ($\le 128$ parameters, $\le 128$ MACs, zero dynamic heap allocation, and $\le 20\text{ ms}$ control loop period).
+An open-source research and engineering framework investigating whether compact, topology-pruned neural networks can control underactuated, chaotic dynamical systems under strict micro-embedded constraints: **$\le 100$ parameters, $\le 100$ multiply-accumulate (MAC) operations, zero dynamic heap allocation, and deterministic execution**.
 
-EvoEdge bridges evolutionary machine learning, classical hybrid nonlinear control, pure ANSI C99 deployment, and Software-in-the-Loop (SIL) simulation.
-
----
-
-## 1. Problem & Motivation
-
-Standard CartPole benchmarks initialize the pole nearly upright, requiring only local linear stabilization. The **Swing-Up** variant initializes the pole hanging downward ($\theta = \pi$), demanding an energy-pumping phase to swing the pole into the inverted basin followed by linear stabilization.
-
-In edge and embedded cyber-physical systems (e.g. low-power Cortex-M microcontrollers, wearable devices, and micro-robotics), controllers face severe operational constraints:
-- **Tight Footprint:** Tiny Flash and SRAM limits prohibit multi-megabyte neural networks.
-- **Low Compute & Energy:** Strict Multiply-Accumulate (MAC) ceilings per forward step.
-- **Deterministic Latency:** Zero dynamic heap allocation (`malloc`/`free`) and bounded worst-case execution time (WCET) to meet periodic control contracts ($50\text{ Hz} \iff 20\text{ ms}$).
-- **Safety & Auditability:** Verifiable behavior, explicit saturation bounds, and fail-safe shutdown upon sensor faults or non-finite inputs.
+EvoEdge bridges multi-objective evolutionary optimization (NSGA-II), teacher-student imitation distillation (DAgger), classical nonlinear control, pure ANSI C99 code generation, and Software-in-the-Loop (SIL) simulation across two distinct benchmarks: **CartPole Swing-Up** and the **Acrobot-v1 Double Pendulum**.
 
 ---
 
-## 2. Research Approach & Evolution
+## Navigation & Documentation Index
 
-The project progressed through a structured seven-day engineering cycle:
+Comprehensive documentation is organized across specialized technical guides:
 
-1. **Neuroevolution Exploration (NEAT & NSGA-II):**
-   Investigated whether topology-evolving algorithms could discover minimal neural networks under multi-objective Pareto optimization (reward vs. parameter count vs. MACs).
-2. **Evolution Strategies (ES MLP Benchmark):**
-   Evaluated Natural Evolution Strategies on fixed MLP architectures under an identical transition-budget ceiling ($1,850,000$ search transitions).
-3. **Stage 2 Forensic Audit:**
-   Established that both learned policies failed development screening gates due to reward deception (agents learned to hold the pole horizontal for reward rather than inverting) and unequal realized transition consumption.
-4. **Classical Analytical Reference (`HybridController`):**
-   Implemented an authoritative reference combining linear LQR balancing ($|\theta| < 0.35\text{ rad}$) and nonlinear energy shaping pumping ($|\theta| \ge 0.35\text{ rad}$) with cart centering, achieving 100% success on nominal and perturbed development sets in 7 parameters and 7 MACs.
-5. **Portable Embedded C Export & Parity:**
-   Transpiled the verified Python reference into pure ANSI C99 (`hybrid_controller.c`), verifying exact bit-level double-precision parity and bounded float32 rounding.
-6. **Platform-Adapter Architecture & SIL Validation:**
-   Designed an embedded platform-adapter boundary that isolates physical peripherals from control logic, verified via native test execution and 100-episode closed-loop simulation.
+- [**System Architecture & Design**](docs/architecture.md): Observation pipelines, state-delay registers, multi-stage compression, C export pipeline, and Mermaid diagrams.
+- [**Methodology & Experimental Protocol**](docs/methodology.md): 7D feature engineering, DAgger bootstrapping, NSGA-II operators, step-reward formulation, perturbation matrices, and bootstrap statistics.
+- [**CartPole Swing-Up Experiments**](docs/experiments/cartpole.md): Task B swing-up, Task A balancing regime sweep, 10-condition robustness evaluation, failure mode analysis, and baseline comparison.
+- [**Acrobot Double Pendulum Experiments**](docs/experiments/acrobot.md): Dynamics formulation, transition-budget reconciliation, full 3-seed distribution, and Spong V2 classical audit.
+- [**Embedded Deployment & SIL Verification**](docs/embedded-deployment.md): Zero-heap C99 export, 64-byte stack footprint, ctypes numerical parity ($<1.25 \times 10^{-6}$), and desktop SIL benchmarking.
+- [**Reproducibility & Replication Guide**](docs/reproducibility.md): Step-by-step setup, test commands, development evaluation scripts, cryptographic SHA-256 ledger, and seed governance.
+- [**Verified Results & Scope Limitations**](docs/results-and-limitations.md): Core findings, 14-gate audit matrix, seed variability disclosures, and explicit anti-claims.
+- [**Contributing Guidelines**](CONTRIBUTING.md): Code standards, seed protection rules, and pull request procedures.
+- [**Citation Metadata**](CITATION.cff): BibTeX and CFF citation formats.
 
 ---
 
-## 3. System Architecture
+## Who Is EvoEdge For?
 
-The framework enforces strict separation between algorithmic control logic, simulation environments, and physical peripheral interfaces:
+EvoEdge is specifically structured for researchers, engineers, and students exploring the intersection of lightweight machine learning, dynamical systems, and resource-constrained edge computing:
 
-```
-                  ┌─────────────────────────────────────────────────────────┐
-                  │                 HIGH-LEVEL WORKFLOW                     │
-                  │                                                         │
-                  │   [ Sensor Acquisition ] (Raw encoder & timing data)    │
-                  │             │                                           │
-                  │             ▼                                           │
-                  │   [ Platform Adapter ] (Observation conversion & checks)│
-                  │             │                                           │
-                  │             ▼                                           │
-                  │   [ C Controller Core ] (7 MACs, 0B heap, pure C99)     │
-                  │             │                                           │
-                  │             ▼                                           │
-                  │   [ Actuator Conversion ] (Force, PWM duty, Direction)  │
-                  └─────────────────────────────────────────────────────────┘
-                                   ▲                       ▲
-                                   │                       │
-                     Desktop SIL Harness         Future Microcontroller
-                     (CartPoleSwingUpEnv)        (Bare-Metal BSP / HAL)
-```
+### 1. Control-Systems & Robotics Researchers
+- **Nonlinear Manifold Exploration:** Study how sub-100-parameter neural networks discover and maintain resonant energy-pumping trajectories to cross homoclinic orbits on underactuated chaotic plants.
+- **Comparison with Classical Baselines:** Benchmark learned policies directly against analytical energy shaping and Linear Quadratic Regulators (LQR).
+- **Latency & Delay Compensation:** Examine the role of finite-history state delay registers (discrete Smith predictors) in stabilizing control loops subject to sensor and actuation delays.
+- **Operating-Regime Boundary Analysis:** Investigate how local linear stabilization compares with global nonlinear recovery across continuous angle-basin sweeps.
 
-### Module Organization
-```
-neat/
-├── run_demo.py                    # Unified reproducible technical demo entry point
-├── requirements.txt               # Python dependencies (numpy, pytest, gym)
-├── baselines/
-│   ├── hybrid_controller.py       # Authoritative Python reference controller
-│   └── mlp.py                     # ES MLP baseline
-├── env/
-│   ├── cartpole_swingup.py        # Canonical CartPole simulation environment
-│   ├── vectorized_env.py          # High-speed vectorized batch simulator
-│   └── budget_tracker.py          # Strict transition accounting wrapper
-├── evolution/
-│   ├── nsga2_engine.py            # NSGA-II multi-objective engine
-│   └── evolution_strategies.py    # Natural Evolution Strategies engine
-├── results/
-│   ├── deployment/                # Embedded C deployment package
-│   │   ├── hybrid_controller.h    # Controller public API and gains
-│   │   ├── hybrid_controller.c    # Pure C99 controller implementation
-│   │   ├── platform_adapter.h     # Platform adapter interface and structures
-│   │   ├── platform_adapter.c     # Sensor and actuator conversion pipeline
-│   │   ├── hybrid_controller_runner.c  # Native C unit tests and benchmark
-│   │   ├── hybrid_controller_runner.exe # Standalone compiled native runner
-│   │   ├── libhybrid_controller.a # Reusable embedded static library
-│   │   ├── hybrid_controller.dll  # Controller dynamic shared library
-│   │   ├── platform_adapter.dll   # Adapter dynamic shared library
-│   │   ├── build_embedded_artifacts.ps1 # PowerShell build script
-│   │   ├── build_embedded_artifacts.sh  # POSIX Bash build script
-│   │   └── DEPLOYMENT_GUIDE.md    # Firmware integration and hardware checklist
-│   ├── day6_sil_deployment_report.md # Day 6 embedded engineering report
-│   └── hybrid_controller_c_export_report.md # Day 5 parity report
-├── docs/
-│   ├── release_summary.md         # Final research & engineering summary
-│   ├── success_criteria.md        # Frozen official qualification standard v2.3
-│   └── success_criteria_v2.4_PROPOSED.md # Proposed Stage 2 protocol revisions
-├── experiments/
-│   ├── run_sil_cartpole.py        # 100-episode closed-loop SIL evaluation
-│   └── run_robustness_experiment.py # Canonical success predicate evaluator
-└── tests/
-    ├── test_embedded_sil.py       # Embedded C & SIL automated tests
-    ├── test_hybrid_c_parity.py    # C-to-Python numerical parity tests
-    └── test_budget_tracker.py     # Transition budget enforcement tests
-```
+### 2. Embedded-Systems Engineers
+- **Deterministic Zero-Heap Architecture:** Inspect an end-to-end neural deployment pipeline written in pure ANSI C99 (`neural_controller.c` / `hybrid_controller.c`) requiring **0 bytes of dynamic heap allocation** (`malloc`/`free`) and a bounded **64-byte stack footprint**.
+- **Platform-Adapter Abstraction:** Study a modular hardware abstraction layer (HAL) architecture that isolates physical peripheral drivers (encoders, PWM timers, motor drivers) from the mathematical control core.
+- **Bit-Level Numerical Parity:** Review automated ctypes harnesses and native C unit tests verifying $< 1.25 \times 10^{-6}$ closed-loop parity between desktop Python models and compiled C libraries.
+- **SIL Verification:** Run desktop Software-in-the-Loop simulations validating memory stability and control period contracts over tens of thousands of consecutive steps.
+
+### 3. AI / ML Students & Practitioners
+- **Multi-Objective Evolutionary Search:** Study practical NSGA-II implementations optimizing non-differentiable objectives (dwell time, worst-condition robustness, parameter counts, and MAC ceilings).
+- **Imitation Distillation (DAgger):** Understand how teacher-assisted bootstrapping overcomes sparse-reward exploration bottlenecks on underactuated systems.
+- **Experimental Rigor & Budget Accounting:** Learn how to implement fail-closed transition budget trackers, stratified multi-condition evaluation schedules, and clustered bootstrap confidence intervals.
+- **Audit & Defect Remediation:** Review transparent engineering case studies detailing how reward deception, transition accounting discrepancies, and analytical controller defects were discovered and systematically resolved.
+
+### 4. Developers Researching Compact Neural Controllers
+- **Extreme Model Compression:** Analyze empirical trade-offs when compressing dense neural policies ($64 \times 64$ MLPs, 4,737 parameters) down to sparse, masked topologies (69 parameters, 60 MACs)—achieving equal or superior performance with **$68.6\times$ fewer weights** and **$76.8\times$ fewer operations**.
+- **Edge Deployment Templates:** Utilize the provided ANSI C99 export templates and build scripts (`build_embedded_artifacts.ps1` / `.sh`) as starting points for deploying custom neural controllers to microcontrollers.
+- **Hardware-Aware Design:** Evaluate model viability against micro-edge constraints where standard deep learning inference engines (e.g., TensorFlow Lite for Microcontrollers, ONNX Runtime) introduce excessive memory or runtime overhead.
 
 ---
 
-## 4. Key Results & Findings
+## Current Readiness and Limitations
 
-### 4.1 Stage 2 Learning Benchmark (ES vs. NSGA-II)
-- **Constraint Compliance:** Both algorithms satisfied complexity constraints (ES: 80 params, 64 MACs; NSGA-II: 5–18 params, 5–18 MACs; ceiling $\le 128$).
-- **Success Rate:** Both methods scored **0.0% nominal success** (0/100 on development seeds 200–299) against the official 100-step sustained balance predicate.
-- **Root Cause:** Dense reward functions encouraged hanging horizontal ($\cos\theta \approx 0.0$ to $0.4$) rather than crossing the saddle into upright balance ($\cos\theta \ge 0.8$).
-- **Status:** Gated out from deployment; preserved in `results/stage2_experiment_report.md`.
+To maintain scientific integrity and prevent industrial misapplication, the project's current maturity and operational boundaries are explicitly stated:
 
-### 4.2 Analytical `HybridController` Performance
-- **Complexity:** 7 parameters, 7 MACs, 0 bytes dynamic allocation.
-- **Nominal Success:** **100.0%** (100 / 100 episodes on seeds 200–299).
-- **Robustness:** **100.0%** worst-condition success across all 10 system perturbation scenarios (pole mass, length, rail bounds, actuator noise).
+### Research Prototype Status
+EvoEdge is a **scientific research prototype and exploratory framework**. It is **NOT** production-ready, mission-critical, or certified for commercial, industrial, automotive, or flight control systems. It is intended solely for laboratory, educational, and research evaluation.
 
-### 4.3 C Export & Numerical Parity
-- **Double Precision (`hybrid_compute_action_double`):** Bit-identical parity with Python reference ($\Delta u = 0.00\text{e}+00$).
-- **Single Precision (`hybrid_compute_action`):** Continuous state parity $\Delta u \le 7.15 \times 10^{-6}$; closed-loop difference $\Delta u \le 1.07 \times 10^{-5}$.
-- **Energy-Sign Discontinuity:** Documented float32 sign flip when $|E - E_0| \le 1.19 \times 10^{-7}$ in an infinitesimal neighborhood of the homoclinic orbit; zero closed-loop impact (100% success maintained).
+### Incomplete Physical Hardware Validation (Gate 10 BLOCKED)
+While the ANSI C99 controller and platform adapter compile cleanly under strict compiler flags (`-Wall -Wextra -Wpedantic`) and pass extensive Software-in-the-Loop (SIL) desktop simulations:
+- **Physical microcontroller testing (e.g., ESP32, STM32 Cortex-M) has not been performed.** No physical development board or test bench was connected during this project phase.
+- **Desktop execution measurements ($p_{50} = 2.50\ \mu\text{s}$) represent high-performance desktop CPU execution (x86_64).** They demonstrate minimal algorithmic complexity (60 MACs, zero branches in real-time loops) but **do NOT constitute on-target microcontroller latency measurements or hard real-time guarantees**.
+- Physical deployment requires implementing hardware timer ISRs, ADC/encoder sampling, and H-bridge PWM drivers on a physical development board, as outlined in [`docs/embedded-deployment.md`](docs/embedded-deployment.md).
 
-### 4.4 Software-in-the-Loop (SIL) Validation
-- **100 Episodes (Seeds 200–299, 50,000 steps):**
-  - Python Reference: **100.0% success**
-  - C Double Precision: **100.0% success** ($\Delta u = 0.00$, $\Delta \text{traj} = 0.00$)
-  - C Single Precision: **100.0% success** ($\Delta u_{\max} = 1.07 \times 10^{-5}$, $\Delta \text{traj}_{\max} = 2.38 \times 10^{-6}$)
-  - Platform Adapter: **100.0% success** ($\Delta u_{\max} = 1.17 \times 10^{-5}$, $\Delta \text{traj}_{\max} = 2.62 \times 10^{-6}$)
-- **Memory Resilience:** Zero memory leakage, zero state accumulation over 100,000 consecutive steps.
+### Prospective Holdout Confirmation Pending Authorization (Gate 11 BLOCKED)
+All numerical claims and statistical intervals reported in this repository are derived from **development evaluation partitions** (CartPole seeds 200–219, Acrobot seeds 500–549):
+- **Prospective out-of-sample confirmatory evaluation (seeds 3000–3099) remains strictly BLOCKED** pending formal human authorization.
+- Seeds 600–749 and 2000–2099 remain permanently quarantined to prevent retrospective evaluation contamination.
+- Until prospective confirmation is formally authorized and unblinded, all results must be interpreted as development-set empirical evidence.
 
-### 4.5 50 Hz Timing Contract (Host Desktop Measurements)
-- **Sample:** 1,000,000 forward evaluations on host x86_64 desktop workstation.
-- **Throughput:** ~79 million inferences/sec.
-- **Median Latency ($p_{50}$):** 12.10 ns (0.00006% of 20 ms loop).
-- **99th Percentile ($p_{99}$):** 19.20 ns.
-- **Maximum Observed:** 242.20 ns.
-- **Budget Compliance:** **100.0000% within 20 ms**.
+### Significant Seed Optimization Variability
+Across independent random training seeds ($N=3$), evolutionary neural search exhibits significant optimization variance:
+- On CartPole Task B, learned MLP baseline seeds achieved 91.0%, 95.0%, and 98.0% success.
+- On Acrobot-v1, the compact architecture converged to 100% on **only 1 of 3 seeds** (Seed 44), yielding an aggregate success of 33.3% (250/750). The MLP baseline converged on 2 of 3 seeds (aggregate 46.9%).
+- By contrast, the analytical classical controller (Spong V2) achieved **100.0% (250/250)** deterministically across all conditions.
+
+### Second-Task Learning vs. Zero-Shot Transfer
+The Acrobot experiments demonstrate that the **compact topology and evolutionary training pipeline generalize to a second distinct control benchmark** when trained from tabula rasa. They do **NOT** demonstrate zero-shot transfer of the CartPole controller weights.
+
+For full disclosures and anti-claims, see [`docs/results-and-limitations.md`](docs/results-and-limitations.md).
 
 ---
 
-## 5. Quick Start & Reproducibility
+## Key Empirical Findings
+
+### 1. CartPole Task B Swing-Up & Stabilization (10 Conditions, $N=100$)
+Evaluated on development seeds 200–209 across 10 system perturbation conditions (mass, length, rail limits, sensor noise, delay):
+
+| Controller | Architecture | Params | MACs | Success Rate | 95% Wilson CI | Worst-Cond Success | Rail Crashes | Dwell Failures |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **EvoEdge Candidate (Seed 46)** | Masked MLP ($H=8$) | **69** | **60** | **99.0%** (99/100) | [94.6%, 99.8%] | **90.0%** | **0** | **1** |
+| **OpenAI-ES Baseline (Seed 43 - Best)** | Dense MLP ($64\times 64$) | 4,737 | 4,608 | **98.0%** (98/100) | [93.0%, 99.4%] | 80.0% | 0 | 2 |
+| **OpenAI-ES Baseline (Seed 44 - Mid)** | Dense MLP ($64\times 64$) | 4,737 | 4,608 | **95.0%** (95/100) | [88.8%, 97.8%] | 70.0% | 0 | 5 |
+| **OpenAI-ES Baseline (Seed 42 - Min)** | Dense MLP ($64\times 64$) | 4,737 | 4,608 | **91.0%** (91/100) | [83.8%, 95.2%] | 50.0% | 0 | 9 |
+| **Classical Reference (`HybridController`)** | Analytical Energy/LQR | **7** | **7** | **84.0%** (84/100) | [75.6%, 89.9%] | 20.0% | 4 | 12 |
+
+### 2. Acrobot-v1 Second Task Benchmark (5 Conditions, $N=250$)
+Evaluated on development seeds 500–549 under a strict transition budget ceiling ($\le 150,000$ search transitions):
+
+| Architecture / Controller | Search Budget | Convergence Yield | Per-Seed Success (42 / 43 / 44) | Aggregate Success ($N=750$) | Best Checkpoint |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Classical Spong V2 (Corrected)** | 0 (Analytical) | N/A | N/A | **250 / 250 (100.0%)** | 100.0% |
+| **EvoEdge Compact ($H=8$, 65 params)** | $\le 150,000$ | **1 of 3 (33.3%)** | 0.0% / 0.0% / 100.0% | **250 / 750 (33.3%)** | **100.0%** (Seed 44) |
+| **Learned MLP 64×64 (4,673 params)** | $\le 150,000$ | **2 of 3 (66.7%)** | 0.0% / 88.0% / 52.8% | **352 / 750 (46.9%)** | **88.0%** (Seed 43) |
+
+### 3. Embedded C99 Deployment Metrics
+- **Dynamic Heap Memory:** 0 bytes (no `malloc`, `calloc`, or dynamic containers).
+- **Stack Footprint:** 64 bytes worst-case.
+- **Numerical Parity (ctypes harness):** Single-precision maximum closed-loop difference $\Delta u \le 1.07 \times 10^{-5}$; double-precision $\Delta u = 0.00$.
+- **Host SIL Timing:** Median latency $p_{50} = 2.50\ \mu\text{s}$ on host desktop CPU.
+
+---
+
+## Quick Start & Verification
 
 ### Prerequisites
 - Python 3.10+ (tested on Python 3.12.10)
-- GCC C99 compiler (tested with GCC 16.1.0 on MSYS2 UCRT64)
-- Windows 11 (tested platform) or POSIX Linux/macOS
+- GCC / Clang / MSVC C99 compiler
+- Windows 11, Linux, or macOS
 
-### 5.1 One-Step Technical Demonstration
-Execute the unified release demonstration:
-```powershell
-python run_demo.py
-```
-This single command:
-1. Validates the host toolchain and dependencies.
-2. Compiles the portable C artifacts (`.a`, `.dll`, `.exe`) with `-Wall -Wextra -Wpedantic -O3`.
-3. Runs the standalone native C test runner (`hybrid_controller_runner.exe`).
-4. Executes the 100-episode closed-loop SIL simulation.
-5. Runs the automated regression test suite.
-
-### 5.2 Manual Step-by-Step Execution
-
-#### Step 1: Build the Embedded C Artifacts
-```powershell
-# PowerShell (Windows)
-powershell -ExecutionPolicy Bypass -File results/deployment/build_embedded_artifacts.ps1
-
-# Or Bash (Linux / macOS)
-bash results/deployment/build_embedded_artifacts.sh
+### 1. Installation
+```bash
+git clone https://github.com/opensourcecodedesigner/EvoEdge.git
+cd EvoEdge
+pip install -r requirements.txt
 ```
 
-#### Step 2: Execute Standalone Native C Runner
-```powershell
-.\results\deployment\hybrid_controller_runner.exe
+### 2. Run Automated Regression Tests
+Verify seed partition integrity, baseline implementations, and embedded parity:
+```bash
+# Verify seed governance boundaries
+pytest tests/test_split_integrity.py -v
+
+# Verify OpenAI-ES baseline implementation and budget enforcement
+pytest work/phase3e_followup_6h/sprint3/project_closeout/v4_baseline/test_v4.py -v
+
+# Verify embedded C numerical parity and SIL harnesses
+pytest tests/test_hybrid_c_parity.py -v
+pytest tests/test_embedded_sil.py -v
 ```
 
-#### Step 3: Run Closed-Loop SIL Simulation
-```powershell
-python experiments/run_sil_cartpole.py
+### 3. Reproduce Development Evaluations
+Run the independent development evaluation scripts against frozen checkpoints:
+```bash
+# Evaluate CartPole Task B swing-up (100 episodes per controller)
+python work/phase3e_followup_6h/sprint3/project_closeout/v4_baseline/evaluate_v4_development.py
+
+# Evaluate Acrobot-v1 second task (250 episodes per controller)
+python work/phase3e_followup_6h/sprint3/research_upgrade/second_task/evaluate_acrobot_v2.py
 ```
 
-#### Step 4: Run Automated Test Suites
-```powershell
-# Run embedded architecture & SIL tests
-python -m pytest tests/test_embedded_sil.py -v
+### 4. Compile & Run Native C Runner
+Compile the portable ANSI C99 controller and run the standalone verification test suite:
+```bash
+gcc -std=c99 -Wall -Wextra -Wpedantic -O3 \
+    results/deployment/hybrid_controller_runner.c \
+    results/deployment/hybrid_controller.c \
+    results/deployment/platform_adapter.c \
+    -o results/deployment/hybrid_controller_runner.exe
 
-# Run C-to-Python numerical parity tests
-python -m pytest tests/test_hybrid_c_parity.py -v
+./results/deployment/hybrid_controller_runner.exe
+```
 
-# Run entire repository test suite (126 tests)
-python -m pytest -q
+For full reproduction commands and SHA-256 hash verification, see [`docs/reproducibility.md`](docs/reproducibility.md).
+
+---
+
+## Repository Structure
+
+```
+EvoEdge/
+├── README.md                      # Project landing page and executive overview
+├── CONTRIBUTING.md                # Development standards and seed protection rules
+├── CITATION.cff                   # Citation metadata
+├── LICENSE                        # MIT open-source license
+├── requirements.txt               # Python package dependencies
+├── docs/                          # Comprehensive technical documentation
+│   ├── architecture.md            # System design, dataflow, and interfaces
+│   ├── methodology.md             # Training protocols, DAgger, and NSGA-II
+│   ├── embedded-deployment.md     # C99 export, stack analysis, and SIL parity
+│   ├── reproducibility.md         # Replication guide and cryptographic ledger
+│   ├── results-and-limitations.md # Findings, 14-gate audit, and anti-claims
+│   ├── diagrams/                  # Mermaid system and dataflow diagrams
+│   └── experiments/
+│       ├── cartpole.md            # CartPole Task B & Task A empirical analysis
+│       └── acrobot.md             # Acrobot-v1 second-task empirical analysis
+├── baselines/                     # Classical reference controllers
+│   ├── hybrid_controller.py       # Analytical Energy-LQR reference
+│   └── mlp.py                     # PyTorch MLP baseline architecture
+├── env/                           # Simulation environments and accounting
+│   ├── cartpole_swingup.py        # Canonical continuous CartPole environment
+│   └── budget_tracker.py          # Fail-closed transition budget wrapper
+├── results/                       # Deployment artifacts and firmware guides
+│   └── deployment/
+│       ├── hybrid_controller.c    # Pure ANSI C99 controller core
+│       ├── hybrid_controller.h    # Controller API and parameter definitions
+│       ├── platform_adapter.c     # Sensor and actuator conversion HAL
+│       ├── platform_adapter.h     # HAL structures and interface
+│       ├── neural_controller.c    # Exported compact neural controller core
+│       ├── neural_controller.h    # Neural controller API
+│       └── DEPLOYMENT_GUIDE.md    # Firmware integration checklist
+├── tests/                         # Automated test suites
+│   ├── test_split_integrity.py    # Seed partition isolation tests
+│   ├── test_hybrid_c_parity.py    # Numerical parity tests
+│   └── test_embedded_sil.py       # Closed-loop SIL tests
+└── work/                          # Preserved research packages & frozen models
+    └── phase3e_followup_6h/sprint3/
+        ├── project_closeout/      # Final CartPole closeout package & models
+        └── research_upgrade/      # Second-task Acrobot package & models
 ```
 
 ---
 
-## 6. Critical Limitations & Scope Boundary
-
-In accordance with scientific and engineering rigor, the following boundaries are explicitly established:
-
-1. **Host-Only Software Verification:**
-   All execution timing (~12–25 ns) was recorded on a high-frequency desktop x86_64 CPU. It demonstrates minimal algorithmic overhead (7 MACs, branch-free arithmetic), but **does NOT constitute microcontroller hardware timing or a hard real-time guarantee**.
-2. **No Physical Development Board:**
-   No physical MCU (e.g. STM32, ESP32) or hardware test rig was present during this sprint. All peripheral interactions (optical encoder, H-bridge PWM, ADC) are simulated via software test doubles.
-3. **Protected Data Isolation:**
-   Official confirmation seed partitions (seeds 600–749 and 2000–2099) remain quarantined and unread. Development results (seeds 200–299) are presented strictly as regression checks.
-4. **Learning vs. Classical Scope:**
-   The failure of ES and NSGA-II under the Stage 2 protocol reflects the current reward formulation and transition budget, not an intrinsic impossibility of neural swing-up control.
-
----
-
-## 7. Roadmap to Physical Hardware
-
-When a physical development board becomes available, follow [`results/deployment/DEPLOYMENT_GUIDE.md`](results/deployment/DEPLOYMENT_GUIDE.md):
-
-1. **Toolchain Setup:** Cross-compile `libhybrid_controller.a` with `arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -O3`.
-2. **Implement Platform Adapter HAL Hooks:**
-   - `bsp_sample_sensors()`: Read encoder hardware timer registers and differentiate velocity.
-   - `bsp_write_actuator()`: Set H-bridge direction GPIO and PWM timer compare register.
-   - `bsp_emergency_shutdown()`: Disable motor gate driver on fault.
-3. **Timer ISR Scheduling:** Call `platform_execute_pipeline_step` inside a 50 Hz periodic timer interrupt (20.0 ms period).
-4. **On-Target Latency Measurement:** Instrument execution time using ARM DWT cycle counter (`DWT->CYCCNT`) or an oscilloscope toggle pin.
-
----
-
-## 8. License
+## License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

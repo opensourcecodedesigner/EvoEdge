@@ -1,0 +1,50 @@
+graph TD
+    subgraph Environment ["Simulation & Hardware Environment"]
+        CP["CartPole-v1 Swing-Up Plant<br/>(Gymnasium / Custom ODE)"]
+        AC["Acrobot-v1 Plant<br/>(Gymnasium Underactuated Double Pendulum)"]
+    end
+
+    subgraph Observations ["Observation & Feature Normalization"]
+        OB1["CartPole State: [x, x_dot, cos_theta, sin_theta, theta_dot]"]
+        OB2["Delay Registers: [u_{t-1}, u_{t-2}]"]
+        OB_VEC["7D Normalized Input Vector"]
+        OB1 --> OB_VEC
+        OB2 --> OB_VEC
+    end
+
+    subgraph Controllers ["Controller Implementations"]
+        subgraph NeuralCandidate ["EvoEdge Compact Neural Controller"]
+            NC["Masked 1-Layer MLP (tanh)<br/>Input: 7D | Hidden: 8 | Output: 1D<br/>Active Params: 69 | MACs: 60"]
+        end
+        subgraph LearnedBaseline ["Full-Scale Learned Baseline"]
+            BL["Dense 2-Layer MLP (tanh)<br/>Input: 7D | Hidden: 64x64 | Output: 1D<br/>Active Params: 4,737 | MACs: 4,608"]
+        end
+        subgraph ClassicalBaseline ["Analytical Reference"]
+            HYB["Hybrid Nonlinear / LQR<br/>Energy Pumping (|theta| >= 0.35 rad)<br/>LQR Balancing (|theta| < 0.35 rad)<br/>Params: 7 | MACs: 7"]
+        end
+    end
+
+    subgraph Actuation ["Actuation Pipeline"]
+        ACT_RAW["Continuous Output: y in [-1.0, 1.0]"]
+        ACT_FORCE["Scaled Action: F = 20.0 * y [N]"]
+        ACT_DELAY["Delay FIFO Queue (0 to 2 Steps, tau = 20-40 ms)"]
+        ACT_RAW --> ACT_FORCE --> ACT_DELAY
+    end
+
+    subgraph Deployment ["Deployment & SIL Validation"]
+        C_EXP["Pure ANSI C99 Export<br/>neural_controller.c / .h<br/>Stack: 64 B | Dynamic Heap: 0 B"]
+        SIL["Software-in-the-Loop (SIL) DLL<br/>Host Latency: p50 = 2.50 us"]
+        MCU["Physical MCU Target (ESP32 / STM32)<br/>Status: BLOCKED (Hardware Unavailable)"]
+        C_EXP --> SIL
+        C_EXP -.-> MCU
+    end
+
+    CP --> OB1
+    OB_VEC --> NC
+    OB_VEC --> BL
+    OB_VEC --> HYB
+    NC --> ACT_RAW
+    BL --> ACT_RAW
+    HYB --> ACT_RAW
+    ACT_DELAY --> CP
+    NC -.-> C_EXP

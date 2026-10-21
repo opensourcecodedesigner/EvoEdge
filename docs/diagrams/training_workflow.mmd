@@ -1,0 +1,36 @@
+graph TD
+    subgraph Stage3A ["Stage 3A: Teacher Demonstration & Imitation"]
+        T_EXP["Expert Controller Demonstrations<br/>(200,000 transitions)"]
+        T_DAG["DAgger Imitation Training<br/>(200,000 transitions)"]
+        T_MODEL["Trained PyTorch Teacher<br/>mlp64_baseline.pt (Dense 64x64)"]
+        T_EXP --> T_DAG --> T_MODEL
+    end
+
+    subgraph Stage3B ["Stage 3B & 3C: Evolutionary Search & Delay Adaptation"]
+        S3B_INIT["Warm-Start / Topology Seeding"]
+        S3B_EVO["NSGA-II Structural Evolution<br/>Multi-Objective Pareto Optimization<br/>(~3,800,000 cumulative lineage transitions)"]
+        S3C_DELAY["Delay Compensation Adaptation<br/>(Internal u_{t-1}, u_{t-2} state registers)"]
+        T_MODEL --> S3B_INIT --> S3B_EVO --> S3C_DELAY
+    end
+
+    subgraph Stage3D ["Stage 3D: Robustness-First Pruning (Candidate Selection)"]
+        S3D_SELECT["Constrained Lexicographic Selection<br/>Objectives: S_worst >= 40%, S_rob >= 90%, Min MACs, Min Params"]
+        S3D_FROZEN["Frozen EvoEdge Candidate<br/>stage3d_nsga2_robust_seed46.json<br/>(69 params, 60 MACs)"]
+        S3C_DELAY --> S3D_SELECT --> S3D_FROZEN
+    end
+
+    subgraph BaselineTraining ["Sprint 3 v4 Learned Baseline Retraining"]
+        BL_LOAD["Teacher Weight Transfer<br/>(Factor 2.5 absorbed into W and b)"]
+        BL_ES["OpenAI-ES Training Engine<br/>Antithetic Sampling & Stratified 5-Condition Schedule"]
+        BL_BUDGET["Fail-Closed Step Budget Tracker<br/>Ceiling: Exactly 1,850,000 transitions"]
+        BL_MODELS["Trained 64x64 Baselines<br/>Seeds 42, 43, 44 (4,737 params, 4,608 MACs)"]
+        T_MODEL --> BL_LOAD --> BL_ES
+        BL_BUDGET --> BL_ES --> BL_MODELS
+    end
+
+    subgraph SecondTask ["Second Control Task: Acrobot-v1 Generalization"]
+        AC_TABULA["Tabula Rasa Random Xavier Initialization<br/>(No teacher, no CartPole weight transfer)"]
+        AC_TRAIN["OpenAI-ES with Fail-Closed StepBudgetTracker<br/>Ceiling: <= 150,000 transitions"]
+        AC_MODELS["Acrobot Controllers (Seeds 42, 43, 44)<br/>Compact (65 params, 56 MACs) vs MLP64 (4,673 params)"]
+        AC_TABULA --> AC_TRAIN --> AC_MODELS
+    end

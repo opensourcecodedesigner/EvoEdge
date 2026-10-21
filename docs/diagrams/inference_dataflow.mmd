@@ -1,0 +1,49 @@
+graph TD
+    subgraph Sensors ["Sensors & Raw State"]
+        RAW_X["Cart Position x [m]"]
+        RAW_XDOT["Cart Velocity x_dot [m/s]"]
+        RAW_THETA["Pole Angle theta [rad]"]
+        RAW_THETADOT["Pole Angular Velocity theta_dot [rad/s]"]
+    end
+
+    subgraph FeaturePipeline ["Feature Extraction & Delay History"]
+        NORM_X["x / 2.4"]
+        NORM_XDOT["clip(x_dot / 10.0, -1, 1)"]
+        FEAT_COS["cos(theta)"]
+        FEAT_SIN["sin(theta)"]
+        NORM_THDOT["clip(theta_dot / 10.0, -1, 1)"]
+        REG_U1["u_{t-1} (Previous Action)"]
+        REG_U2["u_{t-2} (Two-Step Action)"]
+
+        RAW_X --> NORM_X
+        RAW_XDOT --> NORM_XDOT
+        RAW_THETA --> FEAT_COS
+        RAW_THETA --> FEAT_SIN
+        RAW_THETADOT --> NORM_THDOT
+    end
+
+    subgraph ControllerCore ["ANSI C99 Forward Pass (neural_controller_step)"]
+        IN_VEC["Input Vector: x[0..6] (7 floats)"]
+        HID_LAYER["Hidden Layer (8 Neurons with tanh activation)<br/>h_j = tanh(sum_i W1_{ij} * x_i + b1_j)"]
+        OUT_NEURON["Output Neuron (1 Neuron with tanh activation)<br/>y = tanh(sum_j W2_j * h_j + b2)"]
+        MEM["Memory Contract: Stack = 64 Bytes | Heap = 0 Bytes"]
+
+        NORM_X --> IN_VEC
+        NORM_XDOT --> IN_VEC
+        FEAT_COS --> IN_VEC
+        FEAT_SIN --> IN_VEC
+        NORM_THDOT --> IN_VEC
+        REG_U1 --> IN_VEC
+        REG_U2 --> IN_VEC
+
+        IN_VEC --> HID_LAYER --> OUT_NEURON
+    end
+
+    subgraph ActuatorPipeline ["Actuation & Register Shift"]
+        FORCE["Force Output: F = 20.0 * y [N] (Clamped to [-20, 20])"]
+        UPDATE_REGS["Update History Registers:<br/>u_{t-2} <- u_{t-1}<br/>u_{t-1} <- y"]
+        OUT_NEURON --> FORCE
+        OUT_NEURON --> UPDATE_REGS
+        UPDATE_REGS -.-> REG_U1
+        UPDATE_REGS -.-> REG_U2
+    end
